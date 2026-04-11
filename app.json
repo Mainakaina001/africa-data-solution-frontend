@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "Africa-Data-solutions",
+    "slug": "Africa-Data-solutions",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/datalog.png",
+    "scheme": "africadatasolutions",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/datalog.png",
+        "backgroundImage": "./assets/images/datalog.png",
+        "monochromeImage": "./assets/images/datalog.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "package": "com.ghabasjr.AfricaDatasolutions"
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/datalog.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/datalog.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "8d3bb8ee-b6c5-4dc2-9bd2-0da90161f7c9"
+      }
+    }
+  }
+}
