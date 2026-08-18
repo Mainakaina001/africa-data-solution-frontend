@@ -1,15 +1,29 @@
+/**
+ * authSlice.ts
+ * ─────────────────────────────────────────────────────────────────────────────
+ * VULN-018 FIX: The JWT token is no longer stored in Redux state.
+ *
+ * Previously, the full JWT string lived in `state.auth.token`, which meant:
+ *   - It was visible in Redux DevTools (accessible via Flipper in debug builds)
+ *   - It could leak if redux-persist were ever added
+ *   - It was serialised in memory alongside user data
+ *
+ * Now the token lives exclusively in expo-secure-store (see secureToken.ts).
+ * Redux only holds the non-sensitive `user` object and the `isAuthenticated`
+ * boolean — both of which are safe to have in plain memory.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 import { User } from "@/services/api";
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 interface AuthState {
     user: User | null;
-    token: string | null;
+    // VULN-018 FIX: token field removed — stored only in expo-secure-store
     isAuthenticated: boolean;
 }
 
 const initialState: AuthState = {
     user: null,
-    token: null,
     isAuthenticated: false,
 };
 
@@ -19,10 +33,12 @@ const authSlice = createSlice({
     reducers: {
         setCredentials: (
             state,
+            // VULN-018: token is saved to SecureStore in useAuth.ts before this
+            // action is dispatched — it must NOT be stored in Redux state.
             action: PayloadAction<{ user: User; token: string }>
         ) => {
             state.user = action.payload.user;
-            state.token = action.payload.token;
+            // token intentionally NOT stored in state
             state.isAuthenticated = true;
         },
         updateUser: (state, action: PayloadAction<User>) => {
@@ -30,7 +46,6 @@ const authSlice = createSlice({
         },
         logout: (state) => {
             state.user = null;
-            state.token = null;
             state.isAuthenticated = false;
         },
     },

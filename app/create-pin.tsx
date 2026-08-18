@@ -35,6 +35,9 @@ export default function CreatePin() {
         }
     };
 
+    // VULN-020 FIX: Use the `confirmedPin` function parameter directly —
+    // NOT the `pin` state variable, which may be stale due to the 300ms
+    // setTimeout between 'create' and 'confirm' steps.
     const handleSubmit = async (confirmedPin: string) => {
         if (pin !== confirmedPin) {
         Toast.show({
@@ -48,7 +51,7 @@ export default function CreatePin() {
         return;
         }
         try {
-            await createPin({ pin }).unwrap();
+            await createPin({ pin: confirmedPin }).unwrap(); // VULN-020: parameter, not state
             Toast.show({
                 type: 'success',
                 text1: 'Success',
@@ -67,6 +70,7 @@ export default function CreatePin() {
             setStep('create');
         }
     };
+
 
     const title = step === 'create' ? 'Create Transaction PIN' : 'Confirm PIN';
     const subtitle = step === 'create'

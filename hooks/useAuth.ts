@@ -2,6 +2,7 @@ import { router } from "expo-router";
 import { useEffect } from "react";
 
 import {
+    apiFetch,
     removeToken,
     saveToken,
 } from "@/services/api";
@@ -100,13 +101,25 @@ export function useGetMe(enabled = true) {
 }
 
 // ─── Logout ───────────────────────────────────────────────────────────────────
+// VULN-011 FIX: Logout now calls POST /auth/logout to invalidate the token
+// server-side before clearing local state. If the server call fails (network
+// offline, server error), local cleanup still happens — the user is always
+// signed out of the device regardless.
 
 export function useLogout() {
     const dispatch = useAppDispatch();
 
     return async () => {
-        await removeToken();
-        dispatch(logout());
-        router.replace("/login");
+        try {
+            // Attempt server-side token invalidation (JWT blocklist / session delete)
+            await apiFetch('/auth/logout', { method: 'POST' });
+        } catch {
+            // Network failure or server error — proceed with local logout anyway
+        } finally {
+            await removeToken();           // Clear SecureStore
+            dispatch(logout());            // Clear Redux auth state
+            router.replace('/login');
+        }
     };
 }
+

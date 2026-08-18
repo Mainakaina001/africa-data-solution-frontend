@@ -1,4 +1,10 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+// ─── Secure Token Storage (VULN-001 fix) ───────────────────────────────────
+// getToken / saveToken / removeToken now use expo-secure-store (hardware-backed
+// AES-256 on Android Keystore / iOS Keychain) instead of plaintext AsyncStorage.
+// Import for internal use (apiFetch), re-export for external consumers.
+import { getToken, saveToken, removeToken } from "./secureToken";
+export { getToken, saveToken, removeToken };
+
 
 // ─── Base URL ───
 export const BASE_URL = "https://africa-data-solution-backend.onrender.com/api/v1";
@@ -93,6 +99,10 @@ export interface GetDataOrdersParams {
 
 // ─── Wallet Transactions ───
 
+export interface TransactionMetadata {
+    [key: string]: string | number | boolean | null | undefined;
+}
+
 export interface Transaction {
     id: string;
     walletId?: string;
@@ -103,7 +113,7 @@ export interface Transaction {
     reference: string;
     description: string;
     status: 'PENDING' | 'COMPLETED' | 'FAILED';
-    metadata?: any;
+    metadata?: TransactionMetadata;
     createdAt: string;
     updatedAt?: string;
 }
@@ -164,28 +174,40 @@ export interface ApiResponse<T> {
     data: T;
 }
 
-/** Returns the stored JWT or null */
-export const getToken = (): Promise<string | null> =>
-    AsyncStorage.getItem("auth_token");
+// Token helpers are re-exported from ./secureToken above (VULN-001 fix).
+// They use expo-secure-store (Android Keystore / iOS Keychain) instead of
+// plaintext AsyncStorage, so they are no longer defined here.
 
-/** Saves the JWT to AsyncStorage */
-export const saveToken = (token: string): Promise<void> =>
-    AsyncStorage.setItem("auth_token", token);
-
-/** Removes the JWT from AsyncStorage */
-export const removeToken = (): Promise<void> =>
-    AsyncStorage.removeItem("auth_token");
-
-async function apiFetch<T>(
+// ─── API Client ──────────────────────────────────────────────────────────────
+// VULN-008 FIX: apiFetch now handles HTTP 401 globally.
+// When the server returns 401 (token expired / revoked), the app automatically:
+//   1. Deletes the token from SecureStore
+//   2. Dispatches the Redux logout action
+//   3. Redirects the user to /login
+// This prevents stale tokens from persisting after a password change or
+// server-side session invalidation.
+// ─────────────────────────────────────────────────────────────────────────────
+export async function apiFetch<T>(
     endpoint: string,
     options: RequestInit = {}
 ): Promise<T> {
+
     const token = await getToken();
 
     const headers: Record<string, string> = {
         "Content-Type": "application/json",
         ...(options.headers as Record<string, string>),
     };
+
+    // VULN-013: Add Idempotency-Key header to mutating requests (POST/PUT/DELETE)
+    if (options.method && ["POST", "PUT", "DELETE"].includes(options.method.toUpperCase())) {
+        const randomUUID = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+            const r = (Math.random() * 16) | 0;
+            const v = c === "x" ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+        });
+        headers["Idempotency-Key"] = `api_${endpoint.replace(/\//g, "_")}_${Date.now()}_${randomUUID}`;
+    }
 
     if (token) {
         headers["Authorization"] = `Bearer ${token}`;
@@ -195,6 +217,18 @@ async function apiFetch<T>(
         ...options,
         headers,
     });
+
+    // VULN-008: Global 401 handler — force logout on expired/revoked token
+    if (response.status === 401) {
+        await removeToken(); // Clear from SecureStore
+        // Lazy-import to avoid circular dependency (store → api → store)
+        const { store } = await import("../store");
+        const { logout } = await import("../store/slices/authSlice");
+        store.dispatch(logout());
+        const { router } = await import("expo-router");
+        router.replace("/login");
+        throw new Error("Session expired. Please log in again.");
+    }
 
     const json = await response.json();
 
@@ -206,6 +240,7 @@ async function apiFetch<T>(
 
     return json as T;
 }
+
 
 // AUTH
 
@@ -263,35 +298,41 @@ export const getVirtualAccounts = (): Promise<ApiResponse<VirtualAccount[]>> =>
 export interface PurchaseDataRequest {
     dataPlanId: string;
     phone: string;
+    transactionPin: string; // VULN-003: PIN validated server-side before processing
 }
 
 export const getLiveDataPlans = (): Promise<ApiResponse<NetworkPlans[]>> =>
     apiFetch<ApiResponse<NetworkPlans[]>>("/data/plans/live");
 
 export const getDataOrders = (params: GetDataOrdersParams = {}): Promise<ApiResponse<DataOrder[]>> => {
-    const queryParts: string[] = [];
-    if (params.status) queryParts.push(`status=${params.status}`);
-    if (params.limit !== undefined) queryParts.push(`limit=${params.limit}`);
-    if (params.offset !== undefined) queryParts.push(`offset=${params.offset}`);
+    const searchParams = new URLSearchParams();
+    if (params.status) searchParams.append("status", params.status);
+    if (params.limit !== undefined) searchParams.append("limit", String(params.limit));
+    if (params.offset !== undefined) searchParams.append("offset", String(params.offset));
 
-    const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : "";
-    return apiFetch<ApiResponse<DataOrder[]>>(`/data/orders${queryString}`);
+    const queryString = searchParams.toString();
+    return apiFetch<ApiResponse<DataOrder[]>>(`/data/orders${queryString ? `?${queryString}` : ""}`);
 };
 
 export const getDataOrderById = (id: string): Promise<ApiResponse<DataOrder>> =>
     apiFetch<ApiResponse<DataOrder>>(`/data/orders/${id}`);
 
 /**
- * Get raw SME Plug plans (debug endpoint)
+ * Get raw SME Plug plans — DEBUG ONLY (VULN-009 fix).
+ * Stripped from production builds; only callable in Expo development mode.
  */
-export const getRawDataPlans = (): Promise<ApiResponse<unknown>> =>
-    apiFetch<ApiResponse<unknown>>("/data/plans/raw");
+export const getRawDataPlans = __DEV__
+    ? (): Promise<ApiResponse<unknown>> =>
+          apiFetch<ApiResponse<unknown>>("/data/plans/raw")
+    : undefined;
 
 export const getDataPlans = (
     networkId?: number
 ): Promise<ApiResponse<DataPlan[]>> => {
-    const query = networkId !== undefined ? `?networkId=${networkId}` : "";
-    return apiFetch<ApiResponse<DataPlan[]>>(`/data/plans${query}`);
+    const searchParams = new URLSearchParams();
+    if (networkId !== undefined) searchParams.append("networkId", String(networkId));
+    const queryString = searchParams.toString();
+    return apiFetch<ApiResponse<DataPlan[]>>(`/data/plans${queryString ? `?${queryString}` : ""}`);
 };
 
 export const getDataPlanById = (id: string): Promise<ApiResponse<DataPlan>> =>
@@ -306,14 +347,19 @@ export const purchaseData = (data: PurchaseDataRequest): Promise<ApiResponse<any
 // ─── Airtime ───
 
 export interface PurchaseAirtimeRequest {
-    networkId: number;
+    network: string;
     amount: number;
-    phoneNumber: string;
+    phone: string;
+    transactionPin: string; // VULN-003: PIN validated server-side before processing
+}
+
+export interface AirtimeNetwork {
+    id: string;
+    name: string;
 }
 
 export interface AirtimeNetworksResponse {
-    status: boolean;
-    networks: Record<string, string>; // e.g. "1": "MTN"
+    networks: AirtimeNetwork[];
 }
 
 export interface AirtimeOrder {
@@ -412,6 +458,7 @@ export interface PayElectricityRequest {
     variationCode: string;
     amount: number;
     phone: string;
+    transactionPin: string; // VULN-003: PIN validated server-side before processing
 }
 
 // Actual API shape: /bills/tv/providers returns { id, name } — no serviceID field
@@ -438,6 +485,7 @@ export interface PayTvRequest {
     amount: number;
     phone: string;
     subscriptionType: string; // e.g., 'change'
+    transactionPin: string; // VULN-003: PIN validated server-side before processing
 }
 
 // Actual API shape mirrors electricity/tv: { data: { providers: [{id, name}] } }
@@ -463,13 +511,20 @@ export interface PayEducationRequest {
     phone: string;
     quantity: number;
     profileId?: string; // For JAMB
+    transactionPin: string; // VULN-003: PIN validated server-side before processing
 }
 
-export const getBillProviders = (category: string): Promise<ApiResponse<BillProvider[]>> =>
-    apiFetch<ApiResponse<BillProvider[]>>(`/bills/providers?category=${category}`);
+export const getBillProviders = (category: string): Promise<ApiResponse<BillProvider[]>> => {
+    const searchParams = new URLSearchParams();
+    searchParams.append("category", category);
+    return apiFetch<ApiResponse<BillProvider[]>>(`/bills/providers?${searchParams.toString()}`);
+};
 
-export const getBillPlans = (providerId: string): Promise<ApiResponse<BillPlan[]>> =>
-    apiFetch<ApiResponse<BillPlan[]>>(`/bills/plans?providerId=${providerId}`);
+export const getBillPlans = (providerId: string): Promise<ApiResponse<BillPlan[]>> => {
+    const searchParams = new URLSearchParams();
+    searchParams.append("providerId", providerId);
+    return apiFetch<ApiResponse<BillPlan[]>>(`/bills/plans?${searchParams.toString()}`);
+};
 
 export const payBill = (data: PayBillRequest): Promise<ApiResponse<any>> =>
     apiFetch<ApiResponse<any>>("/bills/pay", {

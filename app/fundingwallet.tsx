@@ -16,8 +16,10 @@ import {
     View,
 } from "react-native";
 import Toast from "react-native-toast-message";
+import { usePreventScreenCapture } from "expo-screen-capture";
 
 export default function FundingWallet() {
+    usePreventScreenCapture();
     const [showMonnifyModal, setShowMonnifyModal] = useState(false);
     const [amount, setAmount] = useState("");
 
@@ -45,13 +47,13 @@ export default function FundingWallet() {
             return;
         }
 
-        console.log("Proceeding to Monnify with amount: ", amount);
+        // VULN-010 FIX: Removed console.log of financial amount
         setShowMonnifyModal(false);
         Toast.show({
-            type: "info",
-            text1: "Monnify Option Selected",
+            type: 'info',
+            text1: 'Monnify Option Selected',
             text2: `Proceeding to fund ₦${amount}. Integration pending.`,
-            position: "top",
+            position: 'top',
         });
     };
 

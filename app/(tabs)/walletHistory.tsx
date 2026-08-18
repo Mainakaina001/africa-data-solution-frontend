@@ -2,8 +2,8 @@ import { Colors } from '@/constants/colors';
 import { Transaction } from '@/services/api';
 import { useGetTransactionsQuery } from '@/store/api/apiSlice';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import React, { useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useState, useCallback } from 'react';
 import {
     ActivityIndicator,
     FlatList,
@@ -13,6 +13,7 @@ import {
     View,
 } from 'react-native';
 import { CustomLoader } from '@/components/ui/CustomLoader';
+import * as ScreenCapture from 'expo-screen-capture';
 
 type FilterType = 'ALL' | 'CREDIT' | 'DEBIT';
 type FilterStatus = 'ALL' | 'PENDING' | 'COMPLETED' | 'FAILED';
@@ -69,6 +70,15 @@ function TransactionCard({ tx, onPress }: { tx: Transaction; onPress: () => void
 }
 
 export default function WalletHistory() {
+    useFocusEffect(
+        useCallback(() => {
+            ScreenCapture.preventScreenCaptureAsync();
+            return () => {
+                ScreenCapture.allowScreenCaptureAsync();
+            };
+        }, [])
+    );
+
     const [typeFilter, setTypeFilter] = useState<FilterType>('ALL');
     const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL');
 

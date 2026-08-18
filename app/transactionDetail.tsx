@@ -11,6 +11,7 @@ import {
     View,
 } from 'react-native';
 import { CustomLoader } from '@/components/ui/CustomLoader';
+import { usePreventScreenCapture } from 'expo-screen-capture';
 
 function Row({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
     return (
@@ -22,6 +23,7 @@ function Row({ label, value, mono = false }: { label: string; value: string; mon
 }
 
 export default function WalletTransactionDetail() {
+    usePreventScreenCapture();
     const { reference } = useLocalSearchParams<{ reference: string }>();
     const { data, isLoading, isError } = useGetTransactionByReferenceQuery(reference!, {
         skip: !reference,

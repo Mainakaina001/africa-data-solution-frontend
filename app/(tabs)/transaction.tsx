@@ -30,7 +30,7 @@ export default function TransactionHistory() {
     limit: 20,
   });
 
-  const bills = data?.data?.bills || [];
+  const bills = data?.data?.payments || [];
   const pagination = data?.data?.pagination;
 
   const renderItem = ({ item }: { item: any }) => {

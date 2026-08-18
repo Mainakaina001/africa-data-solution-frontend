@@ -8,6 +8,9 @@ import React, { useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { CustomLoader } from "@/components/ui/CustomLoader";
 import * as Yup from "yup";
+import { apiFetch } from "@/services/api"; // VULN-006
+import Toast from "react-native-toast-message";  // VULN-006
+
 
 // Validation Schema
 const ForgotPasswordSchema = Yup.object().shape({
@@ -20,22 +23,27 @@ export default function ForgotPassword() {
     const [isLoading, setIsLoading] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
 
+    // VULN-006 FIX: Real API call — no longer a stub.
+    // VULN-010 FIX: No console.log of user email.
     const handleForgotPassword = async (values: { email: string }) => {
         setIsLoading(true);
         try {
-            // TODO: Replace with actual API call
-            console.log("Forgot password email:", values.email);
-
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
+            await apiFetch('/auth/forgot-password', {
+                method: 'POST',
+                body: JSON.stringify({ email: values.email }),
+            });
             setIsSuccess(true);
-        } catch (error) {
-            console.error("Forgot password error:", error);
+        } catch (error: any) {
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: error?.message || 'Could not send reset email. Please try again.',
+            });
         } finally {
             setIsLoading(false);
         }
     };
+
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>

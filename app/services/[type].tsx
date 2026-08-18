@@ -1,8 +1,8 @@
 import { Plan, PlanGrid } from '@/components/PlanGrid';
 import { Button } from '@/components/ui/button';
+import { Dropdown } from '@/components/ui/Dropdown';
 import { Input } from '@/components/ui/input';
 import { WalletBalanceCard } from '@/components/WalletBalanceCard';
-import { Dropdown } from '@/components/ui/Dropdown';
 import { Colors } from '@/constants/colors';
 import {
     useGetAirtimeNetworksQuery,
@@ -16,57 +16,46 @@ import {
     useVerifyMeterNumberMutation,
     useVerifySmartcardMutation
 } from '@/store/api/apiSlice';
+import { useAppDispatch } from '@/store/hooks'; // VULN-004
+import { setPendingTransaction, ServiceType } from '@/store/slices/pendingTransactionSlice'; // VULN-004
 import { Ionicons } from '@expo/vector-icons';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Image, ImageSourcePropType, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 
-// ─── Typed provider with real logo assets ───
 
-interface NetworkProvider {
+export interface NetworkProvider {
     id: string;
     name: string;
     logo: ImageSourcePropType;
     color: string;
 }
 
-const NETWORK_PROVIDERS: NetworkProvider[] = [
-    {
-        id: '1',
-        name: 'MTN',
+
+const NETWORK_ASSETS: Record<string, { logo: ImageSourcePropType; color: string }> = {
+    mtn: {
         logo: require('../../assets/images/mtn.png'),
         color: '#FFCC00',
     },
-    {
-        id: '2',
-        name: 'Airtel',
+    airtel: {
         logo: require('../../assets/images/airtel.png'),
         color: '#E30613',
     },
-    {
-        id: '3',
-        name: 'T2',
+    etisalat: {
         logo: require('../../assets/images/9mobiles.png'),
         color: '#00A86B',
     },
-    {
-        id: '4',
-        name: 'Glo',
+    glo: {
         logo: require('../../assets/images/glo.png'),
         color: '#009A44',
     },
-];
+};
 
-const AIRTIME_QUICK_AMOUNTS: Plan[] = [
-    { id: '100', name: '₦100', price: '100', validity: '' },
-    { id: '200', name: '₦200', price: '200', validity: '' },
-    { id: '500', name: '₦500', price: '500', validity: '' },
-    { id: '1000', name: '₦1000', price: '1000', validity: '' },
-    { id: '2000', name: '₦2000', price: '2000', validity: '' },
-    { id: '2000', name: '₦2000', price: '2000', validity: '' },
-    { id: '5000', name: '₦5000', price: '5000', validity: '' },
-];
+const DEFAULT_NETWORK_ASSET = {
+    logo: require('../../assets/images/datalog.png'),
+    color: '#333333',
+};
 
 const DATA_TYPES_OPTIONS = [
     { label: 'All Types', value: 'ALL' },
@@ -185,6 +174,7 @@ const bannerStyles = StyleSheet.create({
 export default function ServiceScreen() {
     const { type } = useLocalSearchParams<{ type: string }>();
     const { data: balanceData } = useGetWalletBalanceQuery();
+    const dispatch = useAppDispatch(); // VULN-004
 
     const [selectedProvider, setSelectedProvider] = useState<NetworkProvider | null>(null);
     const [selectedDataType, setSelectedDataType] = useState<string>('ALL');
@@ -216,7 +206,34 @@ export default function ServiceScreen() {
     });
 
     const liveDataPlans = liveDataPlansResponse?.data || [];
-    const airtimeNetworks = airtimeNetworksResponse?.data?.networks || {};
+
+    // Dynamically map airtime networks from API to local assets
+    const airtimeNetworks: NetworkProvider[] = React.useMemo(() => {
+        const rawNetworks = airtimeNetworksResponse?.data || [];
+        return rawNetworks.map(net => {
+            const asset = NETWORK_ASSETS[net.id.toLowerCase()] || DEFAULT_NETWORK_ASSET;
+            return {
+                id: net.id,
+                name: net.name,
+                logo: asset.logo,
+                color: asset.color,
+            };
+        });
+    }, [airtimeNetworksResponse]);
+
+    // Derive data networks from liveDataPlans (used when type === 'data')
+    const dataNetworks: NetworkProvider[] = React.useMemo(() => {
+        return liveDataPlans.map(np => {
+            const key = np.network.toLowerCase();
+            const asset = NETWORK_ASSETS[key] || DEFAULT_NETWORK_ASSET;
+            return {
+                id: np.network,
+                name: np.network,
+                logo: asset.logo,
+                color: asset.color,
+            };
+        });
+    }, [liveDataPlans]);
 
     // Electricity providers: { data: { providers: [{id, name}] } }
     const electricityProviders: any[] = electricityProvidersResponse?.data?.providers ?? [];
@@ -244,7 +261,6 @@ export default function ServiceScreen() {
     const [verifyJamb, { isLoading: isVerifyingJamb }] = useVerifyJambProfileMutation();
 
     const { data: variationsResponse, isLoading: variationsLoading } = useGetServiceVariationsQuery(
-        // Providers return { id } not { serviceID } — use .id directly as the serviceID
         type === 'electricity' ? (selectedElecProvider?.id ?? '') :
             type === 'cable' ? (selectedTvProvider?.id ?? '') :
                 (selectedEduProvider?.id ?? ''),
@@ -271,7 +287,6 @@ export default function ServiceScreen() {
             }
         });
 
-        // User mentioned YEDC (Yola Electric) is missing. Let's ensure it's available.
         if (!map.has('yola-electric') && !map.has('yedc')) {
             map.set('yola-electric', { serviceID: 'yola-electric', name: 'Yola Electric (YEDC)' });
         }
@@ -308,7 +323,6 @@ export default function ServiceScreen() {
         electricityVariations.forEach(v => {
             const id = v?.variation_code || v?.id;
             const name = v?.name || v?.title;
-            // VTPass returns variation_amount as price conditionally
             const price = v?.variation_amount || v?.price || '0';
             if (id && name) {
                 map.set(id, { ...v, variation_code: id, name, variation_amount: price });
@@ -322,11 +336,10 @@ export default function ServiceScreen() {
         if (type !== 'data' || !selectedProvider) return [];
         const networkPlans = liveDataPlans.find(p => p.network.toUpperCase() === selectedProvider.name.toUpperCase());
         if (!networkPlans) return [];
-        
+
         let plans = networkPlans.plans;
         if (selectedDataType && selectedDataType !== 'ALL') {
             if (selectedDataType.toUpperCase() === 'SME') {
-                // If SME is selected, show every plan that is NOT Gifting, Corporate or Coupon.
                 plans = plans.filter(p => {
                     const n = p.name.toUpperCase();
                     return !n.includes('GIFTING') && !n.includes('CORPORATE') && !n.includes('COUPON');
@@ -340,11 +353,9 @@ export default function ServiceScreen() {
             id: String(p.id),
             name: p.name,
             price: p.price ? p.price.toString() : p.telco_price ? p.telco_price.toString() : '0',
-            validity: '' // Backend doesn't explicitly return validity, it's inside the name
+            validity: ''
         }));
     }, [selectedProvider, selectedDataType, liveDataPlans, type]);
-
-
 
     const serviceTitle = type ? type.charAt(0).toUpperCase() + type.slice(1) + ' Service' : 'Service';
 
@@ -354,7 +365,6 @@ export default function ServiceScreen() {
 
     useEffect(() => {
         if (selectedVariation && selectedVariation.variation_amount) {
-            // Some variations have a fixed price, others don't
             if (Number(selectedVariation.variation_amount) > 0) {
                 setAmount(selectedVariation.variation_amount);
             }
@@ -412,107 +422,119 @@ export default function ServiceScreen() {
         }
     };
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // VULN-004 FIX: No financial data in URL params.
+    // The full payload is stored in Redux (pendingTransactionSlice) with an
+    // opaque UUID as the navigation key. The confirm screen reads from Redux —
+    // no amount, planId, meterNumber, etc. are ever exposed in the URL.
+    //
+    // VULN-014 FIX: Phone is required for ALL service types — no silent
+    // fallback to '08000000000'.
+    // ─────────────────────────────────────────────────────────────────────────
     const handleBuyNow = () => {
         const currentBalance = Number(balanceData?.data?.balance || 0);
         const purchaseAmount = Number(amount);
+        const cleanPhone = phoneNumber.trim();
 
-        if (purchaseAmount > currentBalance) {
+        // Phone is mandatory for ALL service types (VULN-014)
+        if (!cleanPhone || cleanPhone.length < 10) {
             Toast.show({
                 type: 'error',
-                text1: 'Insufficient Balance',
-                text2: `Wallet: ₦${currentBalance} | Required: ₦${purchaseAmount}`,
+                text1: 'Phone Number Required',
+                text2: 'Please enter a valid phone number to continue.',
             });
             return;
         }
 
-        // The provider ID in NETWORK_PROVIDERS already matches the API network IDs.
-        // We also do a dynamic match from the API response as a safety fallback.
-        let resolvedNetworkId = selectedProvider?.id;
-
-        if (type === 'airtime' && airtimeNetworks) {
-            const match = Object.entries(airtimeNetworks).find(
-                ([, name]) => selectedProvider?.name.toLowerCase() === name.toLowerCase()
-            );
-            if (match) resolvedNetworkId = match[0];
+        if (!purchaseAmount || purchaseAmount <= 0) {
+            Toast.show({ type: 'error', text1: 'Invalid Amount', text2: 'Please enter a valid amount.' });
+            return;
         }
 
-        // Create target payload depending on service type
-        let actionPayload: any = {};
+        // UX-only balance pre-check (server enforces atomically — VULN-005 note)
+        if (purchaseAmount > currentBalance) {
+            Toast.show({
+                type: 'info',
+                text1: 'Insufficient Balance',
+                text2: `Wallet: ₦${currentBalance.toLocaleString()} | Required: ₦${purchaseAmount.toLocaleString()}`,
+            });
+            return;
+        }
+
+        // ── Build display labels ────────────────────────────────────────────
+        let displayTarget = cleanPhone;
+        if (type === 'electricity' || type === 'cable') displayTarget = meterNumber;
+        if (type === 'education' && selectedEduProvider?.serviceID === 'jamb') displayTarget = jambProfileId;
+
+        let displayProvider = selectedProvider?.name ?? '';
+        if (type === 'electricity') displayProvider = selectedElecProvider?.name ?? '';
+        if (type === 'cable') displayProvider = selectedTvProvider?.name ?? '';
+        if (type === 'education') displayProvider = selectedEduProvider?.name ?? '';
+
+        let displayDescription = (type || 'Service') + ' Purchase';
+        if (type === 'data' && selectedPlan) displayDescription = selectedPlan.name;
+        else if (type === 'electricity') displayDescription = `Electricity - ${selectedElecProvider?.name} (${meterNumber})`;
+        else if (type === 'cable') displayDescription = `TV Subscription - ${selectedTvProvider?.name} (${meterNumber})`;
+        else if (type === 'education') displayDescription = `Education - ${selectedEduProvider?.name} (${selectedVariation?.name})`;
+
+        // ── Build canonical API payload (stored in Redux, NOT in URL) ───────
+        const pendingId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+        const basePayload = {
+            id: pendingId,
+            type: type as ServiceType,
+            displayAmount: amount,
+            displayProvider,
+            displayTarget,
+            displayDescription,
+            phone: cleanPhone,
+            amount: purchaseAmount,
+        };
 
         if (type === 'airtime') {
-            actionPayload = {
-                networkId: Number(resolvedNetworkId),
-                amount: Number(amount),
-                phoneNumber,
-            };
+            dispatch(setPendingTransaction({
+                ...basePayload,
+                network: selectedProvider?.id.toLowerCase(),
+            }));
         } else if (type === 'data') {
-            actionPayload = {
+            dispatch(setPendingTransaction({
+                ...basePayload,
                 dataPlanId: selectedPlan?.id,
-                phone: phoneNumber,
-            };
+            }));
         } else if (type === 'electricity') {
-            actionPayload = {
+            dispatch(setPendingTransaction({
+                ...basePayload,
                 meterNumber,
                 serviceID: selectedElecProvider?.serviceID,
                 variationCode: selectedVariation?.variation_code,
-                amount: Number(amount),
-                phone: phoneNumber || '08000000000'
-            };
+            }));
         } else if (type === 'cable') {
-            actionPayload = {
-                smartcardNumber: meterNumber, // we reused meterNumber variable
+            dispatch(setPendingTransaction({
+                ...basePayload,
+                smartcardNumber: meterNumber,
                 serviceID: selectedTvProvider?.serviceID,
                 variationCode: selectedVariation?.variation_code,
-                amount: Number(amount),
-                phone: phoneNumber || '08000000000',
-                subscriptionType: 'change'
-            };
+                subscriptionType: 'change',
+            }));
         } else if (type === 'education') {
-            actionPayload = {
+            dispatch(setPendingTransaction({
+                ...basePayload,
                 serviceID: selectedEduProvider?.serviceID,
                 variationCode: selectedVariation?.variation_code,
-                amount: Number(amount),
-                phone: phoneNumber || '08000000000',
                 quantity: Number(quantity),
-                profileId: selectedEduProvider?.serviceID === 'jamb' ? jambProfileId : undefined
-            };
+                profileId: selectedEduProvider?.serviceID === 'jamb' ? jambProfileId : undefined,
+            }));
+        } else {
+            return; // Unsupported service type
         }
 
-        // Description logic
-        let desc = (type || 'Service') + ' Purchase';
-        if (type === 'data' && selectedPlan) {
-            desc = selectedPlan.name + ' FOR ' + selectedPlan.validity;
-        } else if (type === 'electricity') {
-            desc = `Electricity - ${selectedElecProvider?.name} (${meterNumber})`;
-        } else if (type === 'cable') {
-            desc = `TV Subscription - ${selectedTvProvider?.name} (${meterNumber})`;
-        } else if (type === 'education') {
-            desc = `Education - ${selectedEduProvider?.name} (${selectedVariation?.name})`;
-        }
-
-        // Fallback resolve target based on type
-        let actionTarget = phoneNumber;
-        if (type === 'electricity' || type === 'cable') actionTarget = meterNumber;
-        if (type === 'education') actionTarget = selectedEduProvider?.serviceID === 'jamb' ? jambProfileId : phoneNumber;
-
-        let actionProviderName = selectedProvider?.name;
-        if (type === 'electricity') actionProviderName = selectedElecProvider?.name;
-        if (type === 'cable') actionProviderName = selectedTvProvider?.name;
-        if (type === 'education') actionProviderName = selectedEduProvider?.name;
-
+        // Navigate with only the opaque ID — zero financial data in URL
         router.push({
             pathname: '/services/confirm',
-            params: {
-                type,
-                provider: actionProviderName,
-                target: actionTarget,
-                amount,
-                description: desc,
-                image: '../../assets/images/datalog.png',
-                ...actionPayload
-            },
+            params: { id: pendingId },
         });
     };
+
 
     const canProceed = (type === 'electricity' || type === 'cable')
         ? !!meterVerifiedData && !!amount && Number(amount) > 0 && !!phoneNumber
@@ -535,6 +557,7 @@ export default function ServiceScreen() {
             <KeyboardAvoidingView
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
             >
                 <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
                     <WalletBalanceCard balance={balanceData?.data?.balance?.toString() || ""} />
@@ -542,15 +565,13 @@ export default function ServiceScreen() {
                     {/* Show Network Selector ONLY for Data or Airtime */}
                     {(type === 'data' || type === 'airtime') && (
                         <>
-                            {/* Network provider grid with real logos */}
                             <Text style={styles.label}>Select Network</Text>
                             <NetworkProviderSelector
-                                providers={NETWORK_PROVIDERS}
+                                providers={type === 'data' ? dataNetworks : airtimeNetworks}
                                 selectedId={selectedProvider?.id}
                                 onSelect={setSelectedProvider}
                             />
 
-                            {/* Selected provider banner */}
                             {selectedProvider && (
                                 <SelectedProviderBanner provider={selectedProvider} />
                             )}
@@ -563,7 +584,7 @@ export default function ServiceScreen() {
                                         value={selectedDataType}
                                         onSelect={val => {
                                             setSelectedDataType(val);
-                                            setSelectedPlan(null); // reset plan on type change
+                                            setSelectedPlan(null);
                                         }}
                                         placeholder="Select Data Type"
                                     />
@@ -656,7 +677,7 @@ export default function ServiceScreen() {
                                     <Button
                                         title={isVerifyingMeter ? "Verifying..." : "Verify Meter"}
                                         onPress={handleVerifyMeter}
-                                        style={[styles.buyButton, { marginTop: 10, backgroundColor: Colors.secondary }]}
+                                        style={{ marginTop: 10, backgroundColor: Colors.secondary }}
                                         isDisabled={!meterNumber || isVerifyingMeter}
                                     />
                                 </View>
@@ -871,8 +892,6 @@ export default function ServiceScreen() {
                     />
                 </ScrollView>
             </KeyboardAvoidingView>
-
-
         </View>
     );
 }
@@ -896,20 +915,6 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         fontWeight: '500',
     },
-    // dropdown: {
-    //     height: 50,
-    //     backgroundColor: '#F2F2F7',
-    //     borderRadius: 8,
-    //     flexDirection: 'row',
-    //     alignItems: 'center',
-    //     justifyContent: 'space-between',
-    //     paddingHorizontal: 16,
-    // },
-    // dropdownText: {
-    //     fontSize: 14,
-    //     color: Colors.textPrimary,
-    //     fontWeight: '500',
-    // },
     buyButton: {
         marginTop: 20,
     },

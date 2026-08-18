@@ -5,9 +5,11 @@ import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/colors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useProtectedRoute } from '@/hooks/useProtectedRoute'; // VULN-002
 import { Ionicons } from '@expo/vector-icons';
 
 export default function TabLayout() {
+  useProtectedRoute(); // 🔒 VULN-002: Redirects to /login if unauthenticated
   const colorScheme = useColorScheme();
 
   return (

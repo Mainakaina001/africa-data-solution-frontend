@@ -1,5 +1,6 @@
 import {
     AirtimeHistoryResponse,
+    AirtimeNetwork,
     AirtimeNetworksResponse,
     AirtimeOrder,
     ApiResponse,
@@ -41,20 +42,60 @@ import {
     VirtualAccount,
     getToken
 } from "@/services/api";
+import { BASE_URL } from "@/services/api"; // VULN-019: single source of truth
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 export const apiSlice = createApi({
     reducerPath: "api",
-    baseQuery: fetchBaseQuery({
-        baseUrl: "https://africa-data-solution-backend.onrender.com/api/v1",
-        prepareHeaders: async (headers) => {
-            const token = await getToken();
-            if (token) {
-                headers.set("Authorization", `Bearer ${token}`);
+    baseQuery: (() => {
+        const rawBaseQuery = fetchBaseQuery({
+            baseUrl: BASE_URL,
+            prepareHeaders: async (headers) => {
+                const token = await getToken();
+                if (token) {
+                    headers.set("Authorization", `Bearer ${token}`);
+                }
+                return headers;
+            },
+        });
+        
+        const baseQueryWithIdempotency: typeof rawBaseQuery = async (args, api, extraOptions) => {
+            let urlStr = "";
+            let methodStr = "";
+            if (typeof args === "string") {
+                urlStr = args;
+            } else if (args && typeof args === "object") {
+                urlStr = args.url || "";
+                methodStr = args.method || "";
             }
-            return headers;
-        },
-    }),
+
+            const isMutating = ["POST", "PUT", "DELETE"].includes(methodStr.toUpperCase());
+            if (isMutating && args && typeof args === "object") {
+                const randomUUID = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+                    const r = (Math.random() * 16) | 0;
+                    const v = c === "x" ? r : (r & 0x3) | 0x8;
+                    return v.toString(16);
+                });
+                const cleanEndpoint = urlStr.replace(/\//g, "_");
+                const idempotencyKey = `rtk_${cleanEndpoint}_${Date.now()}_${randomUUID}`;
+
+                if (!args.headers) {
+                    args.headers = {};
+                }
+
+                if (args.headers instanceof Headers) {
+                    args.headers.set("Idempotency-Key", idempotencyKey);
+                } else if (Array.isArray(args.headers)) {
+                    args.headers.push(["Idempotency-Key", idempotencyKey]);
+                } else {
+                    (args.headers as Record<string, string>)["Idempotency-Key"] = idempotencyKey;
+                }
+            }
+
+            return rawBaseQuery(args, api, extraOptions);
+        };
+        return baseQueryWithIdempotency;
+    })(),
     tagTypes: ["User", "Wallet", "DataOrders"],
     endpoints: (builder) => ({
         // Auth
@@ -118,13 +159,13 @@ export const apiSlice = createApi({
         }),
         getTransactions: builder.query<ApiResponse<TransactionsResponse>, GetTransactionsParams>({
             query: (params) => {
-                const parts: string[] = [];
-                if (params.type) parts.push(`type=${params.type}`);
-                if (params.status) parts.push(`status=${params.status}`);
-                if (params.limit !== undefined) parts.push(`limit=${params.limit}`);
-                if (params.offset !== undefined) parts.push(`offset=${params.offset}`);
-                const qs = parts.length > 0 ? `?${parts.join('&')}` : '';
-                return `/wallet/transactions${qs}`;
+                const searchParams = new URLSearchParams();
+                if (params.type) searchParams.append("type", params.type);
+                if (params.status) searchParams.append("status", params.status);
+                if (params.limit !== undefined) searchParams.append("limit", String(params.limit));
+                if (params.offset !== undefined) searchParams.append("offset", String(params.offset));
+                const qs = searchParams.toString();
+                return `/wallet/transactions${qs ? `?${qs}` : ""}`;
             },
             providesTags: ["Wallet"],
         }),
@@ -139,8 +180,10 @@ export const apiSlice = createApi({
         }),
         getDataPlans: builder.query<ApiResponse<DataPlan[]>, number | undefined>({
             query: (networkId) => {
-                const query = networkId !== undefined ? `?networkId=${networkId}` : "";
-                return `/data/plans${query}`;
+                const searchParams = new URLSearchParams();
+                if (networkId !== undefined) searchParams.append("networkId", String(networkId));
+                const qs = searchParams.toString();
+                return `/data/plans${qs ? `?${qs}` : ""}`;
             },
         }),
         getDataPlanById: builder.query<ApiResponse<DataPlan>, string>({
@@ -158,12 +201,12 @@ export const apiSlice = createApi({
         // Data Orders
         getDataOrders: builder.query<ApiResponse<DataOrder[]>, GetDataOrdersParams>({
             query: (params) => {
-                const queryParts: string[] = [];
-                if (params.status) queryParts.push(`status=${params.status}`);
-                if (params.limit !== undefined) queryParts.push(`limit=${params.limit}`);
-                if (params.offset !== undefined) queryParts.push(`offset=${params.offset}`);
-                const queryString = queryParts.length > 0 ? `?${queryParts.join('&')}` : "";
-                return `/data/orders${queryString}`;
+                const searchParams = new URLSearchParams();
+                if (params.status) searchParams.append("status", params.status);
+                if (params.limit !== undefined) searchParams.append("limit", String(params.limit));
+                if (params.offset !== undefined) searchParams.append("offset", String(params.offset));
+                const qs = searchParams.toString();
+                return `/data/orders${qs ? `?${qs}` : ""}`;
             },
             providesTags: ["DataOrders"],
         }),
@@ -172,16 +215,16 @@ export const apiSlice = createApi({
         }),
 
         // Airtime
-        getAirtimeNetworks: builder.query<ApiResponse<AirtimeNetworksResponse>, void>({
+        getAirtimeNetworks: builder.query<ApiResponse<AirtimeNetwork[]>, void>({
             query: () => "/airtime/networks",
         }),
         getAirtimeHistory: builder.query<ApiResponse<AirtimeHistoryResponse>, { page?: number; limit?: number }>({
             query: (params) => {
-                const parts: string[] = [];
-                if (params.page !== undefined) parts.push(`page=${params.page}`);
-                if (params.limit !== undefined) parts.push(`limit=${params.limit}`);
-                const qs = parts.length > 0 ? `?${parts.join('&')}` : '';
-                return `/airtime/history${qs}`;
+                const searchParams = new URLSearchParams();
+                if (params.page !== undefined) searchParams.append("page", String(params.page));
+                if (params.limit !== undefined) searchParams.append("limit", String(params.limit));
+                const qs = searchParams.toString();
+                return `/airtime/history${qs ? `?${qs}` : ""}`;
             },
         }),
         getAirtimeOrderByReference: builder.query<ApiResponse<AirtimeOrder>, string>({
@@ -198,10 +241,18 @@ export const apiSlice = createApi({
 
         // Bills
         getBillProviders: builder.query<ApiResponse<BillProvider[]>, string>({
-            query: (category) => `/bills/providers?category=${category}`,
+            query: (category) => {
+                const searchParams = new URLSearchParams();
+                searchParams.append("category", category);
+                return `/bills/providers?${searchParams.toString()}`;
+            },
         }),
         getBillPlans: builder.query<ApiResponse<BillPlan[]>, string>({
-            query: (providerId) => `/bills/plans?providerId=${providerId}`,
+            query: (providerId) => {
+                const searchParams = new URLSearchParams();
+                searchParams.append("providerId", providerId);
+                return `/bills/plans?${searchParams.toString()}`;
+            },
         }),
         payBill: builder.mutation<ApiResponse<any>, PayBillRequest>({
             query: (data) => ({
@@ -213,12 +264,12 @@ export const apiSlice = createApi({
         }),
         getBillsHistory: builder.query<ApiResponse<BillHistoryResponse>, GetBillHistoryParams>({
             query: (params) => {
-                const parts: string[] = [];
-                if (params.category) parts.push(`category=${params.category}`);
-                if (params.page !== undefined) parts.push(`page=${params.page}`);
-                if (params.limit !== undefined) parts.push(`limit=${params.limit}`);
-                const qs = parts.length > 0 ? `?${parts.join('&')}` : '';
-                return `/bills/history${qs}`;
+                const searchParams = new URLSearchParams();
+                if (params.category) searchParams.append("category", params.category);
+                if (params.page !== undefined) searchParams.append("page", String(params.page));
+                if (params.limit !== undefined) searchParams.append("limit", String(params.limit));
+                const qs = searchParams.toString();
+                return `/bills/history${qs ? `?${qs}` : ""}`;
             },
         }),
         getBillByReference: builder.query<ApiResponse<BillTransaction>, string>({

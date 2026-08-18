@@ -107,11 +107,18 @@ export default function SignupScreen() {
                 password: values.password,
             },
             {
+                onSuccess: (res: any) => {
+                    Toast.show({
+                        type: 'success',
+                        text1: 'Registration Successful! 🎉',
+                        text2: res?.message || 'Your account has been created. Please log in.',
+                    });
+                },
                 onError: (err: any) => {
                     Toast.show({
                         type: 'error',
                         text1: 'Registration Failed',
-                        text2: err.message || 'An error occurred. Please try again.',
+                        text2: err?.data?.message || err?.message || 'An error occurred. Please try again.',
                     });
                 },
             }

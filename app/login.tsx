@@ -33,11 +33,18 @@ export default function Login() {
         login(
             { email: values.email, password: values.password },
             {
+                onSuccess: (res: any) => {
+                    Toast.show({
+                        type: 'success',
+                        text1: 'Login Successful',
+                        text2: res?.message || 'Welcome back!',
+                    });
+                },
                 onError: (err: any) => {
                     Toast.show({
                         type: 'error',
                         text1: 'Login Failed',
-                        text2: err.message || 'An error occurred. Please try again.',
+                        text2: err?.data?.message || err?.message || 'An error occurred. Please try again.',
                     });
                 },
             }
@@ -134,6 +141,7 @@ const styles = StyleSheet.create({
     },
     container: {
         flex: 1,
+        marginTop: 40,
     },
     contentContainer: {
         padding: 16,

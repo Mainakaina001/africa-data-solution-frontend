@@ -10,6 +10,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useEffect } from 'react';
 import { store } from '../store';
 
+import { checkDeviceIntegrity, handleCompromisedDevice } from '@/utils/security';
+
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -24,7 +26,14 @@ function RootLayoutNav() {
   const colorScheme = useColorScheme();
 
   useEffect(() => {
-    SplashScreen.hideAsync();
+    (async () => {
+      const isCompromised = await checkDeviceIntegrity();
+      if (isCompromised) {
+        handleCompromisedDevice();
+        return;
+      }
+      await SplashScreen.hideAsync();
+    })();
   }, [])
 
   return (

@@ -2,12 +2,61 @@ import SettingSwitch from "@/components/ui/switch";
 import { Colors } from "@/constants/colors";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import Toast from 'react-native-toast-message';
+import {
+    getBiometricEnabled,
+    setBiometricEnabled,
+    authenticateWithBiometrics,
+    isBiometricsSupported
+} from '@/utils/security';
 
 export default function Security() {
     const [biometric, setBiometric] = useState(false);
     const [walletBalance, setWalletBalance] = useState(false);
+
+    useEffect(() => {
+        (async () => {
+            const enabled = await getBiometricEnabled();
+            setBiometric(enabled);
+        })();
+    }, []);
+
+    const handleBiometricToggle = async (value: boolean) => {
+        if (value) {
+            const supported = await isBiometricsSupported();
+            if (!supported) {
+                Toast.show({
+                    type: 'error',
+                    text1: 'Biometrics Unavailable',
+                    text2: 'Please enable Face ID / Fingerprint in your device settings.',
+                });
+                return;
+            }
+
+            const success = await authenticateWithBiometrics('Confirm biometrics to enable');
+            if (success) {
+                await setBiometricEnabled(true);
+                setBiometric(true);
+                Toast.show({
+                    type: 'success',
+                    text1: 'Biometrics Enabled',
+                    text2: 'You can now use biometrics to authenticate.',
+                });
+            } else {
+                setBiometric(false);
+            }
+        } else {
+            await setBiometricEnabled(false);
+            setBiometric(false);
+            Toast.show({
+                type: 'info',
+                text1: 'Biometrics Disabled',
+            });
+        }
+    };
+
     return (
         <ScrollView style={styles.container}>
             <View style={styles.header}>
@@ -43,7 +92,7 @@ export default function Security() {
                     icon="finger-print"
                     title={"Biometric"}
                     value={biometric}
-                    onValueChange={setBiometric}
+                    onValueChange={handleBiometricToggle}
                 />
                 <SettingSwitch icon="wallet"
                     title="Show Wallet Balance"

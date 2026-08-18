@@ -31,49 +31,51 @@ export const TransactionPinModal: React.FC<TransactionPinModalProps> = ({
             animationType="slide"
             onRequestClose={onClose}
         >
-            <TouchableWithoutFeedback onPress={onClose}>
-                <View style={styles.overlay}>
-                    <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-                        <KeyboardAvoidingView
-                            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                            style={styles.content}
-                        >
-                            <View style={styles.header}>
-                                <Text style={styles.title}>Enter Transaction PIN</Text>
-                                <TouchableOpacity onPress={onClose}>
-                                    <Ionicons name="close" size={24} color={Colors.textPrimary} />
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
+            >
+                <TouchableWithoutFeedback onPress={onClose}>
+                    <View style={styles.overlay}>
+                        <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+                            <View style={styles.content}>
+                                <View style={styles.header}>
+                                    <Text style={styles.title}>Enter Transaction PIN</Text>
+                                    <TouchableOpacity onPress={onClose}>
+                                        <Ionicons name="close" size={24} color={Colors.textPrimary} />
+                                    </TouchableOpacity>
+                                </View>
+
+                                <Text style={styles.subtitle}>Please enter your 4-digit PIN to authorize this transaction.</Text>
+
+                                <View style={styles.pinContainer}>
+                                    {[0, 1, 2, 3].map((index) => (
+                                        <View key={index} style={[styles.pinBox, pin.length > index && styles.pinBoxFilled]}>
+                                            {pin.length > index && <View style={styles.dot} />}
+                                        </View>
+                                    ))}
+                                    <TextInput
+                                        value={pin}
+                                        onChangeText={(val) => setPin(val.replace(/[^0-9]/g, '').slice(0, 4))}
+                                        keyboardType="number-pad"
+                                        secureTextEntry
+                                        style={styles.hiddenInput}
+                                        autoFocus
+                                    />
+                                </View>
+
+                                <TouchableOpacity
+                                    style={[styles.button, pin.length < 4 && styles.buttonDisabled]}
+                                    onPress={handleConfirm}
+                                    disabled={pin.length < 4 || isLoading}
+                                >
+                                    <Text style={styles.buttonText}>{isLoading ? 'Processing...' : 'Proceed'}</Text>
                                 </TouchableOpacity>
                             </View>
-
-                            <Text style={styles.subtitle}>Please enter your 4-digit PIN to authorize this transaction.</Text>
-
-                            <View style={styles.pinContainer}>
-                                {[0, 1, 2, 3].map((index) => (
-                                    <View key={index} style={[styles.pinBox, pin.length > index && styles.pinBoxFilled]}>
-                                        {pin.length > index && <View style={styles.dot} />}
-                                    </View>
-                                ))}
-                                <TextInput
-                                    value={pin}
-                                    onChangeText={(val) => setPin(val.replace(/[^0-9]/g, '').slice(0, 4))}
-                                    keyboardType="number-pad"
-                                    secureTextEntry
-                                    style={styles.hiddenInput}
-                                    autoFocus
-                                />
-                            </View>
-
-                            <TouchableOpacity
-                                style={[styles.button, pin.length < 4 && styles.buttonDisabled]}
-                                onPress={handleConfirm}
-                                disabled={pin.length < 4 || isLoading}
-                            >
-                                <Text style={styles.buttonText}>{isLoading ? 'Processing...' : 'Proceed'}</Text>
-                            </TouchableOpacity>
-                        </KeyboardAvoidingView>
-                    </TouchableWithoutFeedback>
-                </View>
-            </TouchableWithoutFeedback>
+                        </TouchableWithoutFeedback>
+                    </View>
+                </TouchableWithoutFeedback>
+            </KeyboardAvoidingView>
         </Modal>
     );
 };

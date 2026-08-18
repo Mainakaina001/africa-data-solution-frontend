@@ -3,9 +3,10 @@ import { useGetMeQuery, useGetWalletBalanceQuery } from '@/store/api/apiSlice';
 import { useAppSelector } from '@/store/hooks';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import * as ScreenCapture from 'expo-screen-capture';
 
 const SERVICES = [
   { icon: 'wifi-outline', label: 'Data', type: 'data' },
@@ -22,6 +23,15 @@ const SERVICES = [
 ]
 
 export default function Dashboard() {
+  useFocusEffect(
+    useCallback(() => {
+      ScreenCapture.preventScreenCaptureAsync();
+      return () => {
+        ScreenCapture.allowScreenCaptureAsync();
+      };
+    }, [])
+  );
+
   const [balanceVisible, setBalanceVisible] = useState(false);
   const user = useAppSelector((state) => state.auth.user);
   const { data: balanceData, isLoading: balanceLoading, refetch: refetchBalance, isFetching: isFetchingBalance } = useGetWalletBalanceQuery();

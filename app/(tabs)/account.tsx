@@ -1,5 +1,6 @@
-import SettingSwitch from '@/components/ui/switch';
 import { Colors } from '@/constants/colors';
+import { useLogout } from '@/hooks/useAuth'; // VULN-011 / VULN-017
+import { useAppSelector } from '@/store/hooks';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
@@ -14,6 +15,9 @@ import {
 
 export default function AccountScreen() {
     const [isDarkMode, setIsDarkMode] = useState(false);
+    const user = useAppSelector((state) => state.auth.user);
+    const handleLogout = useLogout(); // VULN-011 / VULN-017
+
     return (
         <ScrollView style={styles.container}>
             {/* Header */}
@@ -30,8 +34,8 @@ export default function AccountScreen() {
             </View>
 
             {/* Name */}
-            <Text style={styles.name}>Umar Isah MK</Text>
-            <Text style={styles.username}>Ghabasjr</Text>
+            <Text style={styles.name}>{user?.firstName} {user?.lastName}</Text>
+            {/* <Text style={styles.username}>@{user?.username}</Text> */}
 
             {/* Section */}
             <Text style={styles.section}>General settings</Text>
@@ -48,22 +52,23 @@ export default function AccountScreen() {
                 title="Settings"
                 subtitle="Account, notifications" />
 
-            <SettingItem
+            {/* <SettingItem
                 onPress={() => router.push("/accountLimits")}
                 icon="shield-checkmark-outline"
                 title="Account Limits"
-                subtitle="Upgrade your Africa Data Solutions account" />
+                subtitle="Upgrade your Africa Data Solutions account" /> */}
 
-            <SettingItem
+            {/* <SettingItem
                 icon="people-outline"
                 title="My Referral"
-                subtitle="Referrals, commissions" />
-            <SettingSwitch
+                subtitle="Referrals, commissions" /> */}s
+
+            {/* <SettingSwitch
                 icon='moon-outline'
                 title='Dark Mode'
                 subtitle='Switch app display to preference'
                 value={isDarkMode}
-                onValueChange={setIsDarkMode} />
+                onValueChange={setIsDarkMode} /> */}
             <SettingItem
                 onPress={() => router.push("/support")}
                 icon="headset-outline"
@@ -75,15 +80,15 @@ export default function AccountScreen() {
                 title="Legal"
                 subtitle="Privacy, Security and Terms of use" />
             <SettingItem
-                onPress={() => router.push("/login")}
+                onPress={handleLogout}
                 icon="log-out-outline"
                 title="Log Out"
                 subtitle="Sign Out of your account" />
-            <SettingItem
+            {/* <SettingItem
                 icon="share"
                 title="Share App"
                 subtitle="share our app and get a token"
-            />
+            /> */}
         </ScrollView>
     );
 }
