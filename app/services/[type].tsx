@@ -6,9 +6,9 @@ import { WalletBalanceCard } from '@/components/WalletBalanceCard';
 import { Colors } from '@/constants/colors';
 import {
     useGetAirtimeNetworksQuery,
+    useGetDataPlansByNetworkQuery,
     useGetEducationProvidersQuery,
     useGetElectricityProvidersQuery,
-    useGetLiveDataPlansQuery,
     useGetServiceVariationsQuery,
     useGetTvProvidersQuery,
     useGetWalletBalanceQuery,
@@ -17,7 +17,7 @@ import {
     useVerifySmartcardMutation
 } from '@/store/api/apiSlice';
 import { useAppDispatch } from '@/store/hooks'; // VULN-004
-import { setPendingTransaction, ServiceType } from '@/store/slices/pendingTransactionSlice'; // VULN-004
+import { ServiceType, setPendingTransaction } from '@/store/slices/pendingTransactionSlice'; // VULN-004
 import { Ionicons } from '@expo/vector-icons';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -182,9 +182,20 @@ export default function ServiceScreen() {
     const [phoneNumber, setPhoneNumber] = useState('');
     const [amount, setAmount] = useState('');
 
-    const { data: liveDataPlansResponse, isLoading: plansLoading } = useGetLiveDataPlansQuery(undefined, {
-        skip: type !== 'data'
-    });
+    // Static network list for data — always visible, plans fetched on selection
+    const STATIC_DATA_NETWORKS: NetworkProvider[] = [
+        { id: 'mtn',      name: 'MTN',     logo: NETWORK_ASSETS.mtn.logo,      color: NETWORK_ASSETS.mtn.color },
+        { id: 'airtel',   name: 'Airtel',  logo: NETWORK_ASSETS.airtel.logo,   color: NETWORK_ASSETS.airtel.color },
+        { id: 'glo',      name: 'Glo',     logo: NETWORK_ASSETS.glo.logo,      color: NETWORK_ASSETS.glo.color },
+        { id: 'etisalat', name: '9mobile', logo: NETWORK_ASSETS.etisalat.logo, color: NETWORK_ASSETS.etisalat.color },
+    ];
+
+    // Fetch plans for the selected network from the real /data/plans?network= endpoint
+    const { data: networkDataPlansResponse, isLoading: plansLoading } = useGetDataPlansByNetworkQuery(
+        selectedProvider?.id ?? '',
+        { skip: type !== 'data' || !selectedProvider }
+    );
+    const networkDataPlans = networkDataPlansResponse?.data ?? [];
 
     // Fetch Airtime Networks dynamically
     const { data: airtimeNetworksResponse, isLoading: airtimeNetworksLoading } = useGetAirtimeNetworksQuery(undefined, {
@@ -205,8 +216,6 @@ export default function ServiceScreen() {
         skip: type !== 'education'
     });
 
-    const liveDataPlans = liveDataPlansResponse?.data || [];
-
     // Dynamically map airtime networks from API to local assets
     const airtimeNetworks: NetworkProvider[] = React.useMemo(() => {
         const rawNetworks = airtimeNetworksResponse?.data || [];
@@ -220,20 +229,6 @@ export default function ServiceScreen() {
             };
         });
     }, [airtimeNetworksResponse]);
-
-    // Derive data networks from liveDataPlans (used when type === 'data')
-    const dataNetworks: NetworkProvider[] = React.useMemo(() => {
-        return liveDataPlans.map(np => {
-            const key = np.network.toLowerCase();
-            const asset = NETWORK_ASSETS[key] || DEFAULT_NETWORK_ASSET;
-            return {
-                id: np.network,
-                name: np.network,
-                logo: asset.logo,
-                color: asset.color,
-            };
-        });
-    }, [liveDataPlans]);
 
     // Electricity providers: { data: { providers: [{id, name}] } }
     const electricityProviders: any[] = electricityProvidersResponse?.data?.providers ?? [];
@@ -331,31 +326,28 @@ export default function ServiceScreen() {
         return Array.from(map.values());
     }, [electricityVariations]);
 
-    // Filter available plans for the selected provider
+    // Map and filter plans from the per-network API response
     const availablePlans = React.useMemo(() => {
-        if (type !== 'data' || !selectedProvider) return [];
-        const networkPlans = liveDataPlans.find(p => p.network.toUpperCase() === selectedProvider.name.toUpperCase());
-        if (!networkPlans) return [];
+        if (type !== 'data' || !selectedProvider || networkDataPlans.length === 0) return [];
 
-        let plans = networkPlans.plans;
+        let plans = networkDataPlans;
         if (selectedDataType && selectedDataType !== 'ALL') {
-            if (selectedDataType.toUpperCase() === 'SME') {
-                plans = plans.filter(p => {
-                    const n = p.name.toUpperCase();
-                    return !n.includes('GIFTING') && !n.includes('CORPORATE') && !n.includes('COUPON');
-                });
-            } else {
-                plans = plans.filter(p => p.name.toUpperCase().includes(selectedDataType.toUpperCase()));
-            }
+            plans = plans.filter(p => {
+                const planType = (p.planType || p.name || p.planName || '').toUpperCase();
+                if (selectedDataType.toUpperCase() === 'SME') {
+                    return !planType.includes('GIFTING') && !planType.includes('CORPORATE') && !planType.includes('COUPON');
+                }
+                return planType.includes(selectedDataType.toUpperCase());
+            });
         }
 
         return plans.map(p => ({
             id: String(p.id),
-            name: p.name,
-            price: p.price ? p.price.toString() : p.telco_price ? p.telco_price.toString() : '0',
-            validity: ''
+            name: p.planName || p.name || p.dataAmount || 'Plan',
+            price: p.price ? p.price.toString() : '0',
+            validity: p.validity || ''
         }));
-    }, [selectedProvider, selectedDataType, liveDataPlans, type]);
+    }, [selectedProvider, selectedDataType, networkDataPlans, type]);
 
     const serviceTitle = type ? type.charAt(0).toUpperCase() + type.slice(1) + ' Service' : 'Service';
 
@@ -551,7 +543,9 @@ export default function ServiceScreen() {
                         <Ionicons name="arrow-back" size={24} color="black" />
                     </TouchableOpacity>
                 ),
-                headerShown: true
+                headerShown: true,
+                headerStyle: { backgroundColor: '#fff' },
+                headerStatusBarHeight: 30,
             }} />
 
             <KeyboardAvoidingView
@@ -567,7 +561,7 @@ export default function ServiceScreen() {
                         <>
                             <Text style={styles.label}>Select Network</Text>
                             <NetworkProviderSelector
-                                providers={type === 'data' ? dataNetworks : airtimeNetworks}
+                                providers={type === 'data' ? STATIC_DATA_NETWORKS : airtimeNetworks}
                                 selectedId={selectedProvider?.id}
                                 onSelect={setSelectedProvider}
                             />
@@ -900,10 +894,12 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: 'white',
-        marginTop: 20
+        marginTop: 20,
+        paddingTop: 60
     },
     scrollContent: {
         padding: 16,
+        paddingTop: 30,
         paddingBottom: 40,
     },
     section: {

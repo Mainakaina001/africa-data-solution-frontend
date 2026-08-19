@@ -75,11 +75,19 @@ export interface VirtualAccount {
 
 export interface DataPlan {
     id: string;
-    name: string;
-    price: string;
-    telco_price?: number | string;
-    networkId: number;
+    // Real API fields
+    planName?: string;
+    planCode?: string;
+    dataAmount?: string;
+    price: number | string;
+    validity?: string;
+    planType?: string;
+    description?: string;
+    networkId?: number;
     network: string;
+    // Legacy fallbacks
+    name?: string;
+    telco_price?: number | string;
 }
 
 export interface NetworkPlans {
@@ -93,15 +101,31 @@ export interface NetworkPlans {
 export interface DataOrder {
     id: string;
     phone: string;
-    network: string;
-    planName: string;
     amount: number;
-    status: 'PENDING' | 'COMPLETED' | 'FAILED' | string;
     reference: string;
+    status: 'PENDING' | 'COMPLETED' | 'FAILED' | string;
+    failureReason?: string;
+    deliveredAt?: string;
     createdAt: string;
+    // Legacy / enriched fields (may not always be present)
+    network?: string;
+    planName?: string;
+}
+
+export interface DataOrdersPagination {
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+}
+
+export interface DataOrdersResponse {
+    items: DataOrder[];
+    pagination: DataOrdersPagination;
 }
 
 export interface GetDataOrdersParams {
+    user: { id: string; email: string; phone: string; role: string };
     status?: 'PENDING' | 'COMPLETED' | 'FAILED';
     limit?: number;
     offset?: number;
@@ -375,8 +399,17 @@ export const getDataOrders = (params: GetDataOrdersParams = {}): Promise<ApiResp
     return apiFetch<ApiResponse<DataOrder[]>>(`/data/orders${queryString ? `?${queryString}` : ""}`);
 };
 
-export const getDataOrderById = (id: string): Promise<ApiResponse<DataOrder>> =>
-    apiFetch<ApiResponse<DataOrder>>(`/data/orders/${id}`);
+export const getDataOrderById = (id: string, user?: { id: string; email: string; phone: string; role: string }): Promise<ApiResponse<DataOrder>> => {
+    const searchParams = new URLSearchParams();
+    if (user) {
+        if (user.id) searchParams.append("id", user.id);
+        if (user.email) searchParams.append("email", user.email);
+        if (user.phone) searchParams.append("phone", user.phone);
+        if (user.role) searchParams.append("role", user.role);
+    }
+    const queryString = searchParams.toString();
+    return apiFetch<ApiResponse<DataOrder>>(`/data/orders/${id}${queryString ? `?${queryString}` : ""}`);
+};
 
 /**
  * Get raw SME Plug plans — DEBUG ONLY (VULN-009 fix).

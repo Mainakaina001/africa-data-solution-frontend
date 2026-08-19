@@ -4,9 +4,9 @@ import { useAppSelector } from '@/store/hooks';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
+import * as ScreenCapture from 'expo-screen-capture';
 import { useCallback, useState } from 'react';
 import { Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import * as ScreenCapture from 'expo-screen-capture';
 
 const SERVICES = [
   { icon: 'wifi-outline', label: 'Data', type: 'data' },
@@ -115,17 +115,17 @@ export default function Dashboard() {
 
         {/* Actions */}
         <View style={styles.actionRow}>
-          <ActionButton
+          {/* <ActionButton
             icon="wallet-outline"
             label="Fund Wallet"
             onPress={() => router.push('/fundingwallet')}
-          />
-          <ActionButton
+          /> */}
+          {/* <ActionButton
             icon="time-outline"
             label="History"
             onPress={() => router.push('/(tabs)/walletHistory')}
-          />
-          <ActionButton icon="people-outline" label="Referrals" />
+          /> */}
+          {/* <ActionButton icon="people-outline" label="Referrals" /> */}
         </View>
       </LinearGradient>
 

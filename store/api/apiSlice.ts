@@ -11,6 +11,7 @@ import {
     BillTransaction,
     ChangePasswordRequest,
     DataOrder,
+    DataOrdersResponse,
     DataPlan,
     GetBillHistoryParams,
     GetDataOrdersParams,
@@ -227,6 +228,10 @@ export const apiSlice = createApi({
                 return `/data/plans${qs ? `?${qs}` : ""}`;
             },
         }),
+        // Real endpoint: /data/plans?network=mtn
+        getDataPlansByNetwork: builder.query<ApiResponse<DataPlan[]>, string>({
+            query: (network) => `/data/plans?network=${encodeURIComponent(network.toLowerCase())}`,
+        }),
         getDataPlanById: builder.query<ApiResponse<DataPlan>, string>({
             query: (id) => `/data/plans/${id}`,
         }),
@@ -240,9 +245,16 @@ export const apiSlice = createApi({
         }),
 
         // Data Orders
-        getDataOrders: builder.query<ApiResponse<DataOrder[]>, GetDataOrdersParams>({
+        getDataOrders: builder.query<ApiResponse<DataOrdersResponse>, GetDataOrdersParams>({
             query: (params) => {
                 const searchParams = new URLSearchParams();
+                // Required user params
+                if (params.user) {
+                    if (params.user.id) searchParams.append("id", params.user.id);
+                    if (params.user.email) searchParams.append("email", params.user.email);
+                    if (params.user.phone) searchParams.append("phone", params.user.phone);
+                    if (params.user.role) searchParams.append("role", params.user.role);
+                }
                 if (params.status) searchParams.append("status", params.status);
                 if (params.limit !== undefined) searchParams.append("limit", String(params.limit));
                 if (params.offset !== undefined) searchParams.append("offset", String(params.offset));
@@ -251,8 +263,20 @@ export const apiSlice = createApi({
             },
             providesTags: ["DataOrders"],
         }),
-        getDataOrderById: builder.query<ApiResponse<DataOrder>, string>({
-            query: (id) => `/data/orders/${id}`,
+        getDataOrderById: builder.query<ApiResponse<DataOrder>, { id: string; user?: { id: string; email: string; phone: string; role: string } } | string>({
+            query: (arg) => {
+                const id = typeof arg === "string" ? arg : arg.id;
+                const user = typeof arg === "object" ? arg.user : undefined;
+                const searchParams = new URLSearchParams();
+                if (user) {
+                    if (user.id) searchParams.append("id", user.id);
+                    if (user.email) searchParams.append("email", user.email);
+                    if (user.phone) searchParams.append("phone", user.phone);
+                    if (user.role) searchParams.append("role", user.role);
+                }
+                const qs = searchParams.toString();
+                return `/data/orders/${id}${qs ? `?${qs}` : ""}`;
+            },
         }),
 
         // Airtime
@@ -400,6 +424,7 @@ export const {
     useGetTransactionByReferenceQuery,
     useGetLiveDataPlansQuery,
     useGetDataPlansQuery,
+    useGetDataPlansByNetworkQuery,
     useGetDataPlanByIdQuery,
     usePurchaseDataMutation,
     useGetDataOrdersQuery,
