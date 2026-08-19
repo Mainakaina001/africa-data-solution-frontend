@@ -1,5 +1,6 @@
 import { Colors } from '@/constants/colors';
 import { useGetTransactionByReferenceQuery } from '@/store/api/apiSlice';
+import { useAppSelector } from '@/store/hooks';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
@@ -24,10 +25,15 @@ function Row({ label, value, mono = false }: { label: string; value: string; mon
 
 export default function WalletTransactionDetail() {
     usePreventScreenCapture();
+    const user = useAppSelector((state) => state.auth.user);
     const { reference } = useLocalSearchParams<{ reference: string }>();
-    const { data, isLoading, isError } = useGetTransactionByReferenceQuery(reference!, {
-        skip: !reference,
-    });
+    const { data, isLoading, isError } = useGetTransactionByReferenceQuery(
+        {
+            reference: reference!,
+            user: user ? { id: user.id, email: user.email, phone: user.phone, role: user.role ?? 'USER' } : undefined,
+        },
+        { skip: !reference }
+    );
 
     const tx = data?.data;
 

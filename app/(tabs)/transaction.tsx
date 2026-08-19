@@ -1,17 +1,16 @@
+import { CustomLoader } from '@/components/ui/CustomLoader';
 import { Colors } from '@/constants/colors';
 import { useGetBillsHistoryQuery } from '@/store/api/apiSlice';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
-import { CustomLoader } from '@/components/ui/CustomLoader';
 
 const CATEGORIES = [
   { label: 'All', value: undefined },
@@ -19,6 +18,7 @@ const CATEGORIES = [
   { label: 'TV', value: 'TV' },
   { label: 'Education', value: 'EDUCATION' },
 ];
+
 
 export default function TransactionHistory() {
   const [category, setCategory] = useState<'ELECTRICITY' | 'TV' | 'EDUCATION' | undefined>(undefined);

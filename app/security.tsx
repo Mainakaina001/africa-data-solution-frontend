@@ -1,16 +1,15 @@
-import SettingSwitch from "@/components/ui/switch";
 import { Colors } from "@/constants/colors";
+import {
+    authenticateWithBiometrics,
+    getBiometricEnabled,
+    isBiometricsSupported,
+    setBiometricEnabled
+} from '@/utils/security';
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Toast from 'react-native-toast-message';
-import {
-    getBiometricEnabled,
-    setBiometricEnabled,
-    authenticateWithBiometrics,
-    isBiometricsSupported
-} from '@/utils/security';
 
 export default function Security() {
     const [biometric, setBiometric] = useState(false);
@@ -68,7 +67,7 @@ export default function Security() {
             </View>
             <View>
                 <SettingItem
-                    // onPress={()}
+                    onPress={() => router.push('/change-password')}
                     icon="keypad-outline"
                     title="Change Password"
                     subtitle="change your account password" />
@@ -77,27 +76,27 @@ export default function Security() {
                     icon="shield-outline"
                     title="Change Pin"
                     subtitle="change your pin" />
-                <SettingItem
+                {/* <SettingItem
                     // onPress={()}
                     icon="shield-outline"
                     title="Reset Pin"
-                    subtitle="reset your pin with password" />
+                    subtitle="reset your pin with password" /> */}
                 <SettingItem
                     onPress={() => router.push('/create-pin')}
                     icon="lock-closed-outline"
                     title="Add pin"
                     subtitle="Add your 4-digit transaction PIN" />
 
-                <SettingSwitch
+                {/* <SettingSwitch
                     icon="finger-print"
                     title={"Biometric"}
                     value={biometric}
                     onValueChange={handleBiometricToggle}
-                />
-                <SettingSwitch icon="wallet"
+                /> */}
+                {/* <SettingSwitch icon="wallet"
                     title="Show Wallet Balance"
                     value={walletBalance}
-                    onValueChange={setWalletBalance} />
+                    onValueChange={setWalletBalance} /> */}
             </View>
         </ScrollView>
     )
@@ -123,7 +122,7 @@ function SettingItem({ icon, title, subtitle, onPress }: any) {
 const styles = StyleSheet.create({
     container: {
         backgroundColor: Colors.background,
-        paddingTop: 22
+        paddingTop: 30
 
     },
     header: {

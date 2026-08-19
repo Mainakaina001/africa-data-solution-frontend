@@ -60,9 +60,9 @@ export default function ForgotPassword() {
                 </View>
                 <Text style={styles.title}>Forgot Password?</Text>
                 <Text style={styles.subtitle}>
-                    {isSuccess
-                        ? "Check your email for a password reset link"
-                        : "Don't worry! Enter your email address and we'll send you a link to reset your password"
+                {isSuccess
+                        ? "Check your email for a password reset code"
+                        : "Don't worry! Enter your email address and we'll send you a code to reset your password"
                     }
                 </Text>
             </View>
@@ -109,7 +109,7 @@ export default function ForgotPassword() {
                     </View>
                     <Text style={styles.successTitle}>Email Sent!</Text>
                     <Text style={styles.successMessage}>
-                        We've sent a password reset link to your email address.
+                        We've sent a password reset code to your email address.
                         Please check your inbox and follow the instructions.
                     </Text>
                     <Button

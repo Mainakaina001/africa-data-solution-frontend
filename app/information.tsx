@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { CustomLoader } from "@/components/ui/CustomLoader";
 import { Input } from "@/components/ui/input";
 import { Colors } from "@/constants/colors";
 import { useGetMeQuery } from "@/store/api/apiSlice";
@@ -6,7 +7,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { CustomLoader } from "@/components/ui/CustomLoader";
 
 export default function Information() {
     const { data: profileResponse, isLoading } = useGetMeQuery();
@@ -45,7 +45,7 @@ export default function Information() {
                     <TouchableOpacity onPress={() => router.push("/(tabs)/account")}>
                         <Ionicons name="arrow-back" size={24} color={Colors.primary} />
                     </TouchableOpacity>
-                    <Text style={style.headerText}>Edit User</Text>
+                    <Text style={style.headerText}>Edit</Text>
                 </View>
                 <View style={style.body}>
                     <Input
@@ -92,6 +92,7 @@ const style = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: Colors.background,
+        paddingTop: 20
     },
     content: {
         flex: 1,

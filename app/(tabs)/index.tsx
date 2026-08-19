@@ -34,8 +34,14 @@ export default function Dashboard() {
 
   const [balanceVisible, setBalanceVisible] = useState(false);
   const user = useAppSelector((state) => state.auth.user);
-  const { data: balanceData, isLoading: balanceLoading, refetch: refetchBalance, isFetching: isFetchingBalance } = useGetWalletBalanceQuery();
-  const { refetch: refetchMe, isFetching: isFetchingMe } = useGetMeQuery();
+  const {
+    data: meData,
+    refetch: refetchMe,
+    isFetching: isFetchingMe,
+  } = useGetMeQuery();
+  const { data: balanceData, isLoading: balanceLoading, refetch: refetchBalance, isFetching: isFetchingBalance } = useGetWalletBalanceQuery(
+    user ? { user: { id: user.id, email: user.email, phone: user.phone, role: user.role ?? 'USER' } } : undefined
+  );
 
   const onRefresh = useCallback(() => {
     refetchBalance();
@@ -44,14 +50,18 @@ export default function Dashboard() {
 
   const refreshing = isFetchingBalance || isFetchingMe;
 
-  // Balance from /wallet/balance endpoint (returns number)
-  const balance = balanceData?.data?.balance ?? null;
-  const currency = balanceData?.data?.currency ?? 'NGN';
+  // Full profile from /auth/me (includes wallet + virtualAccount)
+  const meUser = meData?.data;
+
+  // Balance: prefer /wallet/balance endpoint; fall back to /auth/me wallet
+  const balance = balanceData?.data?.balance ?? meUser?.wallet?.balance ?? null;
+  const currency = balanceData?.data?.currency ?? meUser?.wallet?.currency ?? 'NGN';
   const formattedBalance = balance !== null
     ? `₦${Number(balance).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
     : '₦0.00';
 
-  const virtualAccount = user?.virtualAccounts?.[0];
+  // Virtual account from /auth/me
+  const virtualAccount = meUser?.virtualAccount ?? meUser?.virtualAccounts?.[0];
 
   return (
     <ScrollView
@@ -69,7 +79,7 @@ export default function Dashboard() {
               style={styles.avatar}
             />
             <View>
-              <Text style={styles.hello}>Hello, {user?.firstName ?? 'User'} 👋</Text>
+              <Text style={styles.hello}>Hello, {meUser?.firstName ?? user?.firstName ?? 'User'} 👋</Text>
               <Text style={styles.welcome}>Welcome back!</Text>
             </View>
           </View>

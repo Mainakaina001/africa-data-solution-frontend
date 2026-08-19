@@ -1,5 +1,6 @@
 import { Colors } from '@/constants/colors';
 import { useChangePinMutation } from '@/store/api/apiSlice';
+import { useAppSelector } from '@/store/hooks';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
@@ -16,17 +17,18 @@ export default function ChangePin() {
     const [newPin, setNewPin] = useState('');
     const [confirmPin, setConfirmPin] = useState('');
     const [changePin, { isLoading }] = useChangePinMutation();
+    const user = useAppSelector((state) => state.auth.user);
 
     const stepConfig: Record<Step, { title: string; subtitle: string; pin: string; setPin: (v: string) => void }> = {
         current: {
             title: 'Enter Current PIN',
-            subtitle: 'Enter your existing 4-digit transaction PIN',
+            subtitle: 'Enter your existing 6-digit transaction PIN',
             pin: currentPin,
             setPin: setCurrentPin,
         },
         new: {
             title: 'Enter New PIN',
-            subtitle: 'Choose a new 4-digit transaction PIN',
+            subtitle: 'Choose a new 6-digit transaction PIN',
             pin: newPin,
             setPin: setNewPin,
         },
@@ -44,10 +46,10 @@ export default function ChangePin() {
         if (isLoading) return;
         if (key === 'del') {
             config.setPin(config.pin.slice(0, -1));
-        } else if (key !== '' && config.pin.length < 4) {
+        } else if (key !== '' && config.pin.length < 6) {
             const next = config.pin + key;
             config.setPin(next);
-            if (next.length === 4) {
+            if (next.length === 6) {
                 if (step === 'current') setTimeout(() => setStep('new'), 300);
                 else if (step === 'new') setTimeout(() => setStep('confirm'), 300);
                 else handleSubmit(next);
@@ -68,7 +70,17 @@ export default function ChangePin() {
         return;
         }
         try {
-            await changePin({ currentPin, newPin }).unwrap();
+            if (!user) throw new Error('User session not found. Please log in again.');
+            await changePin({
+                currentPin,
+                newPin,
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    phone: user.phone,
+                    role: user.role ?? 'USER',
+                },
+            }).unwrap();
             Toast.show({
                 type: 'success',
                 text1: 'Success',
@@ -121,7 +133,7 @@ export default function ChangePin() {
 
             {/* PIN dots */}
             <View style={styles.dotsRow}>
-                {[0, 1, 2, 3].map((i) => (
+                {[0, 1, 2, 3, 4, 5].map((i) => (
                     <View key={i} style={[styles.dot, config.pin.length > i && styles.dotFilled]} />
                 ))}
             </View>

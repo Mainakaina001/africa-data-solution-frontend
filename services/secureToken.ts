@@ -14,6 +14,7 @@
 import * as SecureStore from "expo-secure-store";
 
 const AUTH_TOKEN_KEY = "auth_token";
+const REFRESH_TOKEN_KEY = "refresh_token";
 
 /**
  * Retrieve the stored JWT from the device's secure keychain/keystore.
@@ -50,5 +51,27 @@ export const removeToken = async (): Promise<void> => {
         await SecureStore.deleteItemAsync(AUTH_TOKEN_KEY);
     } catch {
         // Already deleted or never set — safe to ignore
+    }
+};
+
+export const getRefreshToken = async (): Promise<string | null> => {
+    try {
+        return await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+    } catch {
+        return null;
+    }
+};
+
+export const saveRefreshToken = async (token: string): Promise<void> => {
+    await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, token, {
+        keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    });
+};
+
+export const removeRefreshToken = async (): Promise<void> => {
+    try {
+        await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
+    } catch {
+        // Safe to ignore
     }
 };

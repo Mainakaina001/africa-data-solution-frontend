@@ -1,10 +1,10 @@
 import {
     AirtimeHistoryResponse,
     AirtimeNetwork,
-    AirtimeNetworksResponse,
     AirtimeOrder,
     ApiResponse,
     AuthResponse,
+    BASE_URL,
     BillHistoryResponse,
     BillPlan,
     BillProvider,
@@ -12,8 +12,6 @@ import {
     ChangePasswordRequest,
     DataOrder,
     DataPlan,
-    EducationProvider,
-    ElectricityProvider,
     GetBillHistoryParams,
     GetDataOrdersParams,
     GetTransactionsParams,
@@ -27,10 +25,8 @@ import {
     PurchaseAirtimeRequest,
     PurchaseDataRequest,
     RegisterRequest,
-    ServiceVariation,
     Transaction,
     TransactionsResponse,
-    TvProvider,
     User,
     VariationsResponse,
     VerifyJambRequest,
@@ -40,9 +36,9 @@ import {
     VerifySmartcardRequest,
     VerifySmartcardResponse,
     VirtualAccount,
-    getToken
+    getToken,
+    refreshAccessToken
 } from "@/services/api";
-import { BASE_URL } from "@/services/api"; // VULN-019: single source of truth
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 export const apiSlice = createApi({
@@ -58,7 +54,7 @@ export const apiSlice = createApi({
                 return headers;
             },
         });
-        
+
         const baseQueryWithIdempotency: typeof rawBaseQuery = async (args, api, extraOptions) => {
             let urlStr = "";
             let methodStr = "";
@@ -92,7 +88,17 @@ export const apiSlice = createApi({
                 }
             }
 
-            return rawBaseQuery(args, api, extraOptions);
+            let result = await rawBaseQuery(args, api, extraOptions);
+
+            const isAuthEndpoint = ["/auth/login", "/auth/register", "/auth/refresh"].some((ep) => urlStr.includes(ep));
+            if (result.error && result.error.status === 401 && !isAuthEndpoint) {
+                const newToken = await refreshAccessToken();
+                if (newToken) {
+                    result = await rawBaseQuery(args, api, extraOptions);
+                }
+            }
+
+            return result;
         };
         return baseQueryWithIdempotency;
     })(),
@@ -113,6 +119,13 @@ export const apiSlice = createApi({
                 body: data,
             }),
         }),
+        refreshToken: builder.mutation<ApiResponse<{ accessToken: string; refreshToken: string; refreshExpiresAt: string }>, { refreshToken: string }>({
+            query: (data) => ({
+                url: "/auth/refresh",
+                method: "POST",
+                body: data,
+            }),
+        }),
         getMe: builder.query<ApiResponse<User>, void>({
             query: () => "/auth/me",
             providesTags: ["User"],
@@ -125,26 +138,26 @@ export const apiSlice = createApi({
         //     }),
         //     invalidatesTags: ["User"],
         // }),
-        changePassword: builder.mutation<ApiResponse<any>, ChangePasswordRequest>({
-            query: (data) => ({
-                url: "/auth/change-password",
+        changePassword: builder.mutation<ApiResponse<any>, ChangePasswordRequest & { user: { id: string; email: string; phone: string; role: string } }>({
+            query: ({ user, ...body }) => ({
+                url: `/auth/change-password?id=${encodeURIComponent(user.id)}&email=${encodeURIComponent(user.email)}&phone=${encodeURIComponent(user.phone)}&role=${encodeURIComponent(user.role)}`,
                 method: "POST",
-                body: data,
+                body,
             }),
         }),
-        createPin: builder.mutation<ApiResponse<any>, { pin: string }>({
-            query: (data) => ({
-                url: "/auth/create-pin",
+        createPin: builder.mutation<ApiResponse<any>, { pin: string; user: { id: string; email: string; phone: string; role: string } }>({
+            query: ({ pin, user }) => ({
+                url: `/auth/create-pin?id=${encodeURIComponent(user.id)}&email=${encodeURIComponent(user.email)}&phone=${encodeURIComponent(user.phone)}&role=${encodeURIComponent(user.role)}`,
                 method: "POST",
-                body: data,
+                body: { pin },
             }),
             invalidatesTags: ["User"],
         }),
-        changePin: builder.mutation<ApiResponse<any>, { currentPin: string; newPin: string }>({
-            query: (data) => ({
-                url: "/auth/change-pin",
+        changePin: builder.mutation<ApiResponse<any>, { currentPin: string; newPin: string; user: { id: string; email: string; phone: string; role: string } }>({
+            query: ({ user, currentPin, newPin }) => ({
+                url: `/auth/change-pin?id=${encodeURIComponent(user.id)}&email=${encodeURIComponent(user.email)}&phone=${encodeURIComponent(user.phone)}&role=${encodeURIComponent(user.role)}`,
                 method: "POST",
-                body: data,
+                body: { currentPin, newPin },
             }),
         }),
 
@@ -153,13 +166,29 @@ export const apiSlice = createApi({
             query: () => "/wallet/virtual-accounts",
             providesTags: ["Wallet"],
         }),
-        getWalletBalance: builder.query<ApiResponse<{ balance: number; currency: string }>, void>({
-            query: () => "/wallet/balance",
+        getWalletBalance: builder.query<ApiResponse<{ id?: string; balance: number; currency: string }>, { user?: { id: string; email: string; phone: string; role: string } } | void>({
+            query: (params) => {
+                const searchParams = new URLSearchParams();
+                if (params?.user) {
+                    if (params.user.id) searchParams.append("id", params.user.id);
+                    if (params.user.email) searchParams.append("email", params.user.email);
+                    if (params.user.phone) searchParams.append("phone", params.user.phone);
+                    if (params.user.role) searchParams.append("role", params.user.role);
+                }
+                const qs = searchParams.toString();
+                return `/wallet${qs ? `?${qs}` : ""}`;
+            },
             providesTags: ["Wallet"],
         }),
         getTransactions: builder.query<ApiResponse<TransactionsResponse>, GetTransactionsParams>({
             query: (params) => {
                 const searchParams = new URLSearchParams();
+                if (params.user) {
+                    if (params.user.id) searchParams.append("id", params.user.id);
+                    if (params.user.email) searchParams.append("email", params.user.email);
+                    if (params.user.phone) searchParams.append("phone", params.user.phone);
+                    if (params.user.role) searchParams.append("role", params.user.role);
+                }
                 if (params.type) searchParams.append("type", params.type);
                 if (params.status) searchParams.append("status", params.status);
                 if (params.limit !== undefined) searchParams.append("limit", String(params.limit));
@@ -170,8 +199,20 @@ export const apiSlice = createApi({
             providesTags: ["Wallet"],
         }),
 
-        getTransactionByReference: builder.query<ApiResponse<Transaction>, string>({
-            query: (reference) => `/wallet/transactions/${reference}`,
+        getTransactionByReference: builder.query<ApiResponse<Transaction>, { reference: string; user?: { id: string; email: string; phone: string; role: string } } | string>({
+            query: (arg) => {
+                const reference = typeof arg === "string" ? arg : arg.reference;
+                const user = typeof arg === "object" ? arg.user : undefined;
+                const searchParams = new URLSearchParams();
+                if (user) {
+                    if (user.id) searchParams.append("id", user.id);
+                    if (user.email) searchParams.append("email", user.email);
+                    if (user.phone) searchParams.append("phone", user.phone);
+                    if (user.role) searchParams.append("role", user.role);
+                }
+                const qs = searchParams.toString();
+                return `/wallet/transactions/${reference}${qs ? `?${qs}` : ""}`;
+            },
         }),
 
         // Data Plans
@@ -347,6 +388,7 @@ export const apiSlice = createApi({
 export const {
     useRegisterMutation,
     useLoginMutation,
+    useRefreshTokenMutation,
     useGetMeQuery,
     // useUpdateProfileMutation,
     useChangePasswordMutation,

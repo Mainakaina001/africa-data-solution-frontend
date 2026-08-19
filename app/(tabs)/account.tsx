@@ -61,7 +61,7 @@ export default function AccountScreen() {
             {/* <SettingItem
                 icon="people-outline"
                 title="My Referral"
-                subtitle="Referrals, commissions" /> */}s
+                subtitle="Referrals, commissions" /> */}
 
             {/* <SettingSwitch
                 icon='moon-outline'

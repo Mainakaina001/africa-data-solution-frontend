@@ -39,6 +39,8 @@ export default function Login() {
                         text1: 'Login Successful',
                         text2: res?.message || 'Welcome back!',
                     });
+                    // Navigation is handled by useAuth.ts after token is saved
+                    // and Redux isAuthenticated is set to true
                 },
                 onError: (err: any) => {
                     Toast.show({
@@ -62,7 +64,7 @@ export default function Login() {
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
             >
-                <Text style={styles.title}>Login Screen</Text>
+                <Text style={styles.title}>Login</Text>
 
                 <View style={styles.headerSection}>
                     <Text style={styles.welcome}>Welcome Back 👋</Text>

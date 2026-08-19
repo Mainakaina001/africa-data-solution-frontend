@@ -1,19 +1,19 @@
+import { CustomLoader } from '@/components/ui/CustomLoader';
 import { Colors } from '@/constants/colors';
 import { Transaction } from '@/services/api';
 import { useGetTransactionsQuery } from '@/store/api/apiSlice';
+import { useAppSelector } from '@/store/hooks';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import React, { useState, useCallback } from 'react';
+import * as ScreenCapture from 'expo-screen-capture';
+import React, { useCallback, useState } from 'react';
 import {
-    ActivityIndicator,
     FlatList,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
-import { CustomLoader } from '@/components/ui/CustomLoader';
-import * as ScreenCapture from 'expo-screen-capture';
 
 type FilterType = 'ALL' | 'CREDIT' | 'DEBIT';
 type FilterStatus = 'ALL' | 'PENDING' | 'COMPLETED' | 'FAILED';
@@ -79,18 +79,25 @@ export default function WalletHistory() {
         }, [])
     );
 
+    const user = useAppSelector((state) => state.auth.user);
     const [typeFilter, setTypeFilter] = useState<FilterType>('ALL');
     const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL');
 
     const { data, isLoading, isFetching, refetch } = useGetTransactionsQuery({
+        user: user ? {
+            id: user.id,
+            email: user.email,
+            phone: user.phone,
+            role: user.role ?? 'USER',
+        } : undefined,
         type: typeFilter !== 'ALL' ? typeFilter : undefined,
         status: statusFilter !== 'ALL' ? statusFilter : undefined,
         limit: 50,
         offset: 0,
     });
 
-    const fetchedTransactions = data?.data?.transactions ?? [];
-    const transactions = fetchedTransactions.filter(tx => {
+    const fetchedTransactions = data?.data?.items ?? data?.data?.transactions ?? [];
+    const transactions = fetchedTransactions.filter((tx: { type: string; status: string; }) => {
         const matchType = typeFilter === 'ALL' || tx.type === typeFilter;
         const matchStatus = statusFilter === 'ALL' || tx.status === statusFilter;
         return matchType && matchStatus;

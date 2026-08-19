@@ -2,12 +2,12 @@
 // getToken / saveToken / removeToken now use expo-secure-store (hardware-backed
 // AES-256 on Android Keystore / iOS Keychain) instead of plaintext AsyncStorage.
 // Import for internal use (apiFetch), re-export for external consumers.
-import { getToken, saveToken, removeToken } from "./secureToken";
-export { getToken, saveToken, removeToken };
+import { getRefreshToken, getToken, removeRefreshToken, removeToken, saveRefreshToken, saveToken } from "./secureToken";
+export { getRefreshToken, getToken, removeRefreshToken, removeToken, saveRefreshToken, saveToken };
 
 
 // ─── Base URL ───
-export const BASE_URL = "https://africa-data-solution-backend.onrender.com/api/v1";
+export const BASE_URL = "https://api.africadatasolutions.org/api/v1";
 
 // ─── Auth ───
 
@@ -36,17 +36,27 @@ export interface User {
     phone: string;
     firstName: string;
     lastName: string;
+    role?: string;
     isActive?: boolean;
     isVerified?: boolean;
+    twoFactorEnabled?: boolean;
     wallet?: Wallet;
+    // /auth/me returns a single virtualAccount object
+    virtualAccount?: VirtualAccount;
+    // kept for backward-compat if any endpoint still returns an array
     virtualAccounts?: VirtualAccount[];
     createdAt?: string;
     updatedAt?: string;
 }
 
 export interface AuthResponse {
-    token: string;
+    // API returns accessToken (not token)
+    accessToken: string;
+    refreshToken?: string;
+    refreshExpiresAt?: string;
     user: User;
+    twoFactorRequired?: boolean;
+    twoFactorEnabled?: boolean;
 }
 
 // ─── Virtual Account ─────
@@ -119,7 +129,8 @@ export interface Transaction {
 }
 
 export interface TransactionsResponse {
-    transactions: Transaction[];
+    items?: Transaction[];
+    transactions?: Transaction[];
     pagination: {
         total: number;
         limit: number;
@@ -129,6 +140,12 @@ export interface TransactionsResponse {
 }
 
 export interface GetTransactionsParams {
+    user?: {
+        id: string;
+        email: string;
+        phone: string;
+        role: string;
+    };
     type?: 'CREDIT' | 'DEBIT';
     status?: 'PENDING' | 'COMPLETED' | 'FAILED';
     limit?: number;
@@ -187,6 +204,36 @@ export interface ApiResponse<T> {
 // This prevents stale tokens from persisting after a password change or
 // server-side session invalidation.
 // ─────────────────────────────────────────────────────────────────────────────
+export async function refreshAccessToken(): Promise<string | null> {
+    const refreshToken = await getRefreshToken();
+    if (!refreshToken) return null;
+
+    try {
+        const response = await fetch(`${BASE_URL}/auth/refresh`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ refreshToken }),
+        });
+
+        if (!response.ok) return null;
+
+        const json = await response.json();
+        if (json?.success && json?.data?.accessToken) {
+            const newAccessToken = json.data.accessToken;
+            await saveToken(newAccessToken);
+            if (json.data.refreshToken) {
+                await saveRefreshToken(json.data.refreshToken);
+            }
+            return newAccessToken;
+        }
+        return null;
+    } catch {
+        return null;
+    }
+}
+
 export async function apiFetch<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -213,14 +260,28 @@ export async function apiFetch<T>(
         headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    let response = await fetch(`${BASE_URL}${endpoint}`, {
         ...options,
         headers,
     });
 
-    // VULN-008: Global 401 handler — force logout on expired/revoked token
-    if (response.status === 401) {
-        await removeToken(); // Clear from SecureStore
+    // Automatically attempt refresh on 401 (except for login/register/refresh endpoints)
+    const isAuthEndpoint = ["/auth/login", "/auth/register", "/auth/refresh"].includes(endpoint);
+    if (response.status === 401 && !isAuthEndpoint) {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+            headers["Authorization"] = `Bearer ${newToken}`;
+            response = await fetch(`${BASE_URL}${endpoint}`, {
+                ...options,
+                headers,
+            });
+        }
+    }
+
+    // Global 401 handler — force logout if still 401 after attempt
+    if (response.status === 401 && !isAuthEndpoint) {
+        await removeToken();
+        await removeRefreshToken();
         // Lazy-import to avoid circular dependency (store → api → store)
         const { store } = await import("../store");
         const { logout } = await import("../store/slices/authSlice");
@@ -323,7 +384,7 @@ export const getDataOrderById = (id: string): Promise<ApiResponse<DataOrder>> =>
  */
 export const getRawDataPlans = __DEV__
     ? (): Promise<ApiResponse<unknown>> =>
-          apiFetch<ApiResponse<unknown>>("/data/plans/raw")
+        apiFetch<ApiResponse<unknown>>("/data/plans/raw")
     : undefined;
 
 export const getDataPlans = (

@@ -3,7 +3,10 @@ import { useEffect } from "react";
 
 import {
     apiFetch,
+    getRefreshToken,
+    removeRefreshToken,
     removeToken,
+    saveRefreshToken,
     saveToken,
 } from "@/services/api";
 import {
@@ -48,24 +51,31 @@ export function useRegister() {
 
 export function useLogin() {
     const dispatch = useAppDispatch();
-    const [trigger, { isLoading, error, data }] = useLoginMutation();
-
-    useEffect(() => {
-        if (data?.success && data.data) {
-            const { token, user } = data.data;
-            if (token) {
-                saveToken(token).then(() => {
-                    dispatch(setCredentials({ user, token }));
-                    router.replace("/(tabs)");
-                });
-            }
-        }
-    }, [data, dispatch]);
+    const [trigger, { isLoading, error }] = useLoginMutation();
 
     const mutate = async (values: any, options?: any) => {
         try {
             const result = await trigger(values).unwrap();
+
+            // Save token and update Redux BEFORE navigating,
+            // so useProtectedRoute sees isAuthenticated = true immediately
+            if (result?.success && result.data) {
+                const { accessToken, refreshToken, user } = result.data;
+                if (accessToken) {
+                    await saveToken(accessToken);
+                    dispatch(setCredentials({ user, token: accessToken }));
+                }
+                if (refreshToken) {
+                    await saveRefreshToken(refreshToken);
+                }
+            }
+
             options?.onSuccess?.(result);
+
+            // Navigate only after token + Redux state are both set
+            if (result?.success) {
+                router.replace("/(tabs)");
+            }
         } catch (err: any) {
             options?.onError?.(err);
         }
@@ -101,22 +111,23 @@ export function useGetMe(enabled = true) {
 }
 
 // ─── Logout ───────────────────────────────────────────────────────────────────
-// VULN-011 FIX: Logout now calls POST /auth/logout to invalidate the token
-// server-side before clearing local state. If the server call fails (network
-// offline, server error), local cleanup still happens — the user is always
-// signed out of the device regardless.
 
 export function useLogout() {
     const dispatch = useAppDispatch();
 
     return async () => {
         try {
-            // Attempt server-side token invalidation (JWT blocklist / session delete)
-            await apiFetch('/auth/logout', { method: 'POST' });
+            const refreshToken = await getRefreshToken();
+            // Attempt server-side token invalidation
+            await apiFetch('/auth/logout', {
+                method: 'POST',
+                body: JSON.stringify({ refreshToken: refreshToken || "" }),
+            });
         } catch {
             // Network failure or server error — proceed with local logout anyway
         } finally {
-            await removeToken();           // Clear SecureStore
+            await removeToken();           // Clear access token from SecureStore
+            await removeRefreshToken();     // Clear refresh token from SecureStore
             dispatch(logout());            // Clear Redux auth state
             router.replace('/login');
         }

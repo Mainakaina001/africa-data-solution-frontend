@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Colors } from '@/constants/colors';
 import { useCreatePinMutation } from '@/store/api/apiSlice';
+import { useAppSelector } from '@/store/hooks';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
@@ -14,6 +15,7 @@ export default function CreatePin() {
     const [pin, setPin] = useState('');
     const [confirmPin, setConfirmPin] = useState('');
     const [createPin, { isLoading }] = useCreatePinMutation();
+    const user = useAppSelector((state) => state.auth.user);
 
     const currentPin = step === 'create' ? pin : confirmPin;
     const setCurrentPin = step === 'create' ? setPin : setConfirmPin;
@@ -21,10 +23,10 @@ export default function CreatePin() {
     const handleKey = (key: string) => {
         if (key === 'del') {
             setCurrentPin((p) => p.slice(0, -1));
-        } else if (key !== '' && currentPin.length < 4) {
+        } else if (key !== '' && currentPin.length < 6) {
             const next = currentPin + key;
             setCurrentPin(next);
-            if (next.length === 4) {
+            if (next.length === 6) {
                 if (step === 'create') {
                     // Move to confirm step after brief delay
                     setTimeout(() => setStep('confirm'), 300);
@@ -51,7 +53,16 @@ export default function CreatePin() {
         return;
         }
         try {
-            await createPin({ pin: confirmedPin }).unwrap(); // VULN-020: parameter, not state
+            if (!user) throw new Error('User session not found. Please log in again.');
+            await createPin({
+                pin: confirmedPin,
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    phone: user.phone,
+                    role: user.role ?? 'USER',
+                },
+            }).unwrap(); // VULN-020: parameter, not state
             Toast.show({
                 type: 'success',
                 text1: 'Success',
@@ -74,7 +85,7 @@ export default function CreatePin() {
 
     const title = step === 'create' ? 'Create Transaction PIN' : 'Confirm PIN';
     const subtitle = step === 'create'
-        ? 'Choose a 4-digit PIN to secure your transactions'
+        ? 'Choose a 6-digit PIN to secure your transactions'
         : 'Re-enter your PIN to confirm';
     const displayPin = step === 'create' ? pin : confirmPin;
 
@@ -105,7 +116,7 @@ export default function CreatePin() {
 
             {/* PIN dots */}
             <View style={styles.dotsRow}>
-                {[0, 1, 2, 3].map((i) => (
+                {[0, 1, 2, 3, 4, 5].map((i) => (
                     <View
                         key={i}
                         style={[styles.dot, displayPin.length > i && styles.dotFilled]}
