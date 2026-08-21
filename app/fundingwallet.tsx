@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Colors } from "@/constants/colors";
+import { useGetMeQuery } from "@/store/api/apiSlice";
 import { useAppSelector } from "@/store/hooks";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
@@ -24,7 +25,9 @@ export default function FundingWallet() {
     const [amount, setAmount] = useState("");
 
     const user = useAppSelector((state) => state.auth.user);
-    const virtualAccount = user?.virtualAccounts?.[0];
+    const { data: meData } = useGetMeQuery();
+    const meUser = meData?.data ?? user;
+    const virtualAccount = meUser?.virtualAccount ?? meUser?.virtualAccounts?.[0];
 
     const copyToClipboard = async (text: string, type: string) => {
         await Clipboard.setStringAsync(text);

@@ -26,7 +26,14 @@ export interface LoginRequest {
 
 export interface Wallet {
     id?: string;
-    balance: string; // API returns balance as a string e.g. "0"
+    balance: string | number; // API returns balance as a number or string
+    currency: string;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface WalletBalance {
+    balance: string | number;
     currency: string;
 }
 
@@ -125,7 +132,7 @@ export interface DataOrdersResponse {
 }
 
 export interface GetDataOrdersParams {
-    user: { id: string; email: string; phone: string; role: string };
+    user?: { id: string; email: string; phone: string; role: string };
     status?: 'PENDING' | 'COMPLETED' | 'FAILED';
     limit?: number;
     offset?: number;
@@ -373,10 +380,34 @@ export const changePassword = (data: ChangePasswordRequest): Promise<ApiResponse
         body: JSON.stringify(data),
     });
 
-// VIRTUAL ACCOUNT
+// VIRTUAL ACCOUNT & WALLET
 
 export const getVirtualAccounts = (): Promise<ApiResponse<VirtualAccount[]>> =>
     apiFetch<ApiResponse<VirtualAccount[]>>("/wallet/virtual-accounts");
+
+export const getWallet = (user?: { id: string; email: string; phone: string; role: string }): Promise<ApiResponse<Wallet>> => {
+    const searchParams = new URLSearchParams();
+    if (user) {
+        if (user.id) { searchParams.append("id", user.id); searchParams.append("user.id", user.id); }
+        if (user.email) { searchParams.append("email", user.email); searchParams.append("user.email", user.email); }
+        if (user.phone) { searchParams.append("phone", user.phone); searchParams.append("user.phone", user.phone); }
+        if (user.role) { searchParams.append("role", user.role); searchParams.append("user.role", user.role); }
+    }
+    const qs = searchParams.toString();
+    return apiFetch<ApiResponse<Wallet>>(`/wallet${qs ? `?${qs}` : ""}`);
+};
+
+export const getWalletBalance = (user?: { id: string; email: string; phone: string; role: string }): Promise<ApiResponse<WalletBalance>> => {
+    const searchParams = new URLSearchParams();
+    if (user) {
+        if (user.id) { searchParams.append("id", user.id); searchParams.append("user.id", user.id); }
+        if (user.email) { searchParams.append("email", user.email); searchParams.append("user.email", user.email); }
+        if (user.phone) { searchParams.append("phone", user.phone); searchParams.append("user.phone", user.phone); }
+        if (user.role) { searchParams.append("role", user.role); searchParams.append("user.role", user.role); }
+    }
+    const qs = searchParams.toString();
+    return apiFetch<ApiResponse<WalletBalance>>(`/wallet/balance${qs ? `?${qs}` : ""}`);
+};
 
 // DATA PLANS
 

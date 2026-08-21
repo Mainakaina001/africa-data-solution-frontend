@@ -2,8 +2,11 @@ import {
     useGetDataPlanByIdQuery,
     useGetDataPlansQuery,
     useGetLiveDataPlansQuery,
-    useGetVirtualAccountsQuery
+    useGetMeQuery,
+    useGetVirtualAccountsQuery,
+    useGetWalletBalanceQuery,
 } from "@/store/api/apiSlice";
+import { useAppSelector } from "@/store/hooks";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // VIRTUAL ACCOUNT
@@ -19,6 +22,44 @@ export function useVirtualAccounts(enabled = true) {
     });
 
     return { data, error: error as Error | null, isLoading, refetch };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WALLET BALANCE
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetches the wallet balance for the currently logged-in user.
+ * Automatically queries user profile if not present in Redux state.
+ */
+export function useWalletBalance(enabled = true) {
+    const user = useAppSelector((state) => state.auth.user);
+    const { data: meData } = useGetMeQuery(undefined, { skip: !enabled });
+    const activeUser = user || meData?.data;
+
+    const { data, error, isLoading, isFetching, refetch } = useGetWalletBalanceQuery(
+        activeUser ? { user: { id: activeUser.id, email: activeUser.email, phone: activeUser.phone, role: activeUser.role ?? 'USER' } } : undefined,
+        { skip: !enabled || !activeUser }
+    );
+
+    const rawBalance = data?.data?.balance ?? activeUser?.wallet?.balance ?? null;
+    const currency = data?.data?.currency ?? activeUser?.wallet?.currency ?? 'NGN';
+    const numBalance = rawBalance !== null && rawBalance !== undefined ? Number(rawBalance) : 0;
+    const formattedBalance = rawBalance !== null && rawBalance !== undefined
+        ? `₦${Number(rawBalance).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        : '₦0.00';
+
+    return {
+        balance: rawBalance,
+        numBalance,
+        formattedBalance,
+        currency,
+        data,
+        error: error as Error | null,
+        isLoading,
+        isFetching,
+        refetch,
+    };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

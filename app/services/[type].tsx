@@ -4,6 +4,7 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { Input } from '@/components/ui/input';
 import { WalletBalanceCard } from '@/components/WalletBalanceCard';
 import { Colors } from '@/constants/colors';
+import { useWalletBalance } from '@/hooks/useWallet';
 import {
     useGetAirtimeNetworksQuery,
     useGetDataPlansByNetworkQuery,
@@ -173,7 +174,7 @@ const bannerStyles = StyleSheet.create({
 
 export default function ServiceScreen() {
     const { type } = useLocalSearchParams<{ type: string }>();
-    const { data: balanceData } = useGetWalletBalanceQuery();
+    const { balance: walletBalance, numBalance: currentBalance } = useWalletBalance();
     const dispatch = useAppDispatch(); // VULN-004
 
     const [selectedProvider, setSelectedProvider] = useState<NetworkProvider | null>(null);
@@ -424,7 +425,6 @@ export default function ServiceScreen() {
     // fallback to '08000000000'.
     // ─────────────────────────────────────────────────────────────────────────
     const handleBuyNow = () => {
-        const currentBalance = Number(balanceData?.data?.balance || 0);
         const purchaseAmount = Number(amount);
         const cleanPhone = phoneNumber.trim();
 
@@ -545,7 +545,6 @@ export default function ServiceScreen() {
                 ),
                 headerShown: true,
                 headerStyle: { backgroundColor: '#fff' },
-                headerStatusBarHeight: 30,
             }} />
 
             <KeyboardAvoidingView
@@ -554,7 +553,7 @@ export default function ServiceScreen() {
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
             >
                 <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-                    <WalletBalanceCard balance={balanceData?.data?.balance?.toString() || ""} />
+                    <WalletBalanceCard balance={walletBalance !== null && walletBalance !== undefined ? String(walletBalance) : ""} />
 
                     {/* Show Network Selector ONLY for Data or Airtime */}
                     {(type === 'data' || type === 'airtime') && (

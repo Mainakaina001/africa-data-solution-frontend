@@ -37,6 +37,8 @@ import {
     VerifySmartcardRequest,
     VerifySmartcardResponse,
     VirtualAccount,
+    Wallet,
+    WalletBalance,
     getToken,
     refreshAccessToken
 } from "@/services/api";
@@ -167,17 +169,55 @@ export const apiSlice = createApi({
             query: () => "/wallet/virtual-accounts",
             providesTags: ["Wallet"],
         }),
-        getWalletBalance: builder.query<ApiResponse<{ id?: string; balance: number; currency: string }>, { user?: { id: string; email: string; phone: string; role: string } } | void>({
+        getWallet: builder.query<ApiResponse<Wallet>, { user?: { id: string; email: string; phone: string; role: string } } | void>({
             query: (params) => {
                 const searchParams = new URLSearchParams();
                 if (params?.user) {
-                    if (params.user.id) searchParams.append("id", params.user.id);
-                    if (params.user.email) searchParams.append("email", params.user.email);
-                    if (params.user.phone) searchParams.append("phone", params.user.phone);
-                    if (params.user.role) searchParams.append("role", params.user.role);
+                    if (params.user.id) {
+                        searchParams.append("id", params.user.id);
+                        searchParams.append("user.id", params.user.id);
+                    }
+                    if (params.user.email) {
+                        searchParams.append("email", params.user.email);
+                        searchParams.append("user.email", params.user.email);
+                    }
+                    if (params.user.phone) {
+                        searchParams.append("phone", params.user.phone);
+                        searchParams.append("user.phone", params.user.phone);
+                    }
+                    if (params.user.role) {
+                        searchParams.append("role", params.user.role);
+                        searchParams.append("user.role", params.user.role);
+                    }
                 }
                 const qs = searchParams.toString();
                 return `/wallet${qs ? `?${qs}` : ""}`;
+            },
+            providesTags: ["Wallet"],
+        }),
+        getWalletBalance: builder.query<ApiResponse<WalletBalance>, { user?: { id: string; email: string; phone: string; role: string } } | void>({
+            query: (params) => {
+                const searchParams = new URLSearchParams();
+                if (params?.user) {
+                    if (params.user.id) {
+                        searchParams.append("id", params.user.id);
+                        searchParams.append("user.id", params.user.id);
+                    }
+                    if (params.user.email) {
+                        searchParams.append("email", params.user.email);
+                        searchParams.append("user.email", params.user.email);
+                    }
+                    if (params.user.phone) {
+                        searchParams.append("phone", params.user.phone);
+                        searchParams.append("user.phone", params.user.phone);
+                    }
+                    if (params.user.role) {
+                        searchParams.append("role", params.user.role);
+                        searchParams.append("user.role", params.user.role);
+                    }
+                }
+                const qs = searchParams.toString();
+                return `/wallet/balance${qs ? `?${qs}` : ""}`;
             },
             providesTags: ["Wallet"],
         }),
@@ -185,10 +225,22 @@ export const apiSlice = createApi({
             query: (params) => {
                 const searchParams = new URLSearchParams();
                 if (params.user) {
-                    if (params.user.id) searchParams.append("id", params.user.id);
-                    if (params.user.email) searchParams.append("email", params.user.email);
-                    if (params.user.phone) searchParams.append("phone", params.user.phone);
-                    if (params.user.role) searchParams.append("role", params.user.role);
+                    if (params.user.id) {
+                        searchParams.append("id", params.user.id);
+                        searchParams.append("user.id", params.user.id);
+                    }
+                    if (params.user.email) {
+                        searchParams.append("email", params.user.email);
+                        searchParams.append("user.email", params.user.email);
+                    }
+                    if (params.user.phone) {
+                        searchParams.append("phone", params.user.phone);
+                        searchParams.append("user.phone", params.user.phone);
+                    }
+                    if (params.user.role) {
+                        searchParams.append("role", params.user.role);
+                        searchParams.append("user.role", params.user.role);
+                    }
                 }
                 if (params.type) searchParams.append("type", params.type);
                 if (params.status) searchParams.append("status", params.status);
@@ -206,10 +258,22 @@ export const apiSlice = createApi({
                 const user = typeof arg === "object" ? arg.user : undefined;
                 const searchParams = new URLSearchParams();
                 if (user) {
-                    if (user.id) searchParams.append("id", user.id);
-                    if (user.email) searchParams.append("email", user.email);
-                    if (user.phone) searchParams.append("phone", user.phone);
-                    if (user.role) searchParams.append("role", user.role);
+                    if (user.id) {
+                        searchParams.append("id", user.id);
+                        searchParams.append("user.id", user.id);
+                    }
+                    if (user.email) {
+                        searchParams.append("email", user.email);
+                        searchParams.append("user.email", user.email);
+                    }
+                    if (user.phone) {
+                        searchParams.append("phone", user.phone);
+                        searchParams.append("user.phone", user.phone);
+                    }
+                    if (user.role) {
+                        searchParams.append("role", user.role);
+                        searchParams.append("user.role", user.role);
+                    }
                 }
                 const qs = searchParams.toString();
                 return `/wallet/transactions/${reference}${qs ? `?${qs}` : ""}`;
@@ -419,6 +483,7 @@ export const {
     useCreatePinMutation,
     useChangePinMutation,
     useGetVirtualAccountsQuery,
+    useGetWalletQuery,
     useGetWalletBalanceQuery,
     useGetTransactionsQuery,
     useGetTransactionByReferenceQuery,

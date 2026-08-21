@@ -4,12 +4,14 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 interface WalletBalanceCardProps {
-    balance: string;
+    balance: string | number;
 }
 
 export const WalletBalanceCard: React.FC<WalletBalanceCardProps> = ({ balance }) => {
-    const displayBalance = balance
-        ? `₦${Number(balance).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+    const isValuePresent = balance !== undefined && balance !== null && balance !== '';
+    const num = isValuePresent ? Number(balance) : NaN;
+    const displayBalance = !isNaN(num)
+        ? `₦${num.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         : 'Loading...';
 
     return (

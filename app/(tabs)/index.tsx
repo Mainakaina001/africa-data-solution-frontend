@@ -1,11 +1,13 @@
 import { Colors } from '@/constants/colors';
-import { useGetMeQuery, useGetWalletBalanceQuery } from '@/store/api/apiSlice';
-import { useAppSelector } from '@/store/hooks';
+import { useWalletBalance } from '@/hooks/useWallet';
+import { useGetMeQuery } from '@/store/api/apiSlice';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { updateUser } from '@/store/slices/authSlice';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import * as ScreenCapture from 'expo-screen-capture';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const SERVICES = [
@@ -33,15 +35,28 @@ export default function Dashboard() {
   );
 
   const [balanceVisible, setBalanceVisible] = useState(false);
+  const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
   const {
     data: meData,
     refetch: refetchMe,
     isFetching: isFetchingMe,
   } = useGetMeQuery();
-  const { data: balanceData, isLoading: balanceLoading, refetch: refetchBalance, isFetching: isFetchingBalance } = useGetWalletBalanceQuery(
-    user ? { user: { id: user.id, email: user.email, phone: user.phone, role: user.role ?? 'USER' } } : undefined
-  );
+
+  useEffect(() => {
+    if (meData?.success && meData.data) {
+      dispatch(updateUser(meData.data));
+    }
+  }, [meData, dispatch]);
+
+  const {
+    balance,
+    formattedBalance,
+    currency,
+    isLoading: balanceLoading,
+    isFetching: isFetchingBalance,
+    refetch: refetchBalance,
+  } = useWalletBalance();
 
   const onRefresh = useCallback(() => {
     refetchBalance();
@@ -51,14 +66,7 @@ export default function Dashboard() {
   const refreshing = isFetchingBalance || isFetchingMe;
 
   // Full profile from /auth/me (includes wallet + virtualAccount)
-  const meUser = meData?.data;
-
-  // Balance: prefer /wallet/balance endpoint; fall back to /auth/me wallet
-  const balance = balanceData?.data?.balance ?? meUser?.wallet?.balance ?? null;
-  const currency = balanceData?.data?.currency ?? meUser?.wallet?.currency ?? 'NGN';
-  const formattedBalance = balance !== null
-    ? `₦${Number(balance).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
-    : '₦0.00';
+  const meUser = meData?.data ?? user;
 
   // Virtual account from /auth/me
   const virtualAccount = meUser?.virtualAccount ?? meUser?.virtualAccounts?.[0];
