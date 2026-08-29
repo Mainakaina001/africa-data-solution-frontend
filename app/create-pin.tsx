@@ -54,7 +54,7 @@ export default function CreatePin() {
         }
         try {
             if (!user) throw new Error('User session not found. Please log in again.');
-            await createPin({
+            const res = await createPin({
                 pin: confirmedPin,
                 user: {
                     id: user.id,
@@ -65,8 +65,8 @@ export default function CreatePin() {
             }).unwrap(); // VULN-020: parameter, not state
             Toast.show({
                 type: 'success',
-                text1: 'Success',
-                text2: 'Transaction PIN created successfully!',
+                text1: 'PIN Created',
+                text2: res?.message || res?.data?.message || 'Transaction PIN created successfully!',
                 visibilityTime: 1500,
                 onHide: () => router.back(),
             });
@@ -74,7 +74,7 @@ export default function CreatePin() {
             Toast.show({
                 type: 'error',
                 text1: 'Error',
-                text2: err?.data?.message || 'Failed to create PIN. Please try again.',
+                text2: err?.data?.message || err?.message || 'Failed to create PIN.',
             });
             setPin('');
             setConfirmPin('');

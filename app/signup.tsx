@@ -111,7 +111,7 @@ export default function SignupScreen() {
                     Toast.show({
                         type: 'success',
                         text1: 'Registration Successful! 🎉',
-                        text2: res?.message || 'Your account has been created. Please log in.',
+                        text2: res?.message || res?.data?.message || 'Your account has been created. Please log in.',
                     });
                 },
                 onError: (err: any) => {
@@ -219,7 +219,7 @@ export default function SignupScreen() {
                             </View>
 
                             {error && (
-                                <Text style={styles.errorText}>{error.message}</Text>
+                                <Text style={styles.errorText}>{(error as any)?.data?.message || error.message}</Text>
                             )}
 
                             <Button

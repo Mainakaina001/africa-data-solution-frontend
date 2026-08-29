@@ -28,16 +28,21 @@ export default function ForgotPassword() {
     const handleForgotPassword = async (values: { email: string }) => {
         setIsLoading(true);
         try {
-            await apiFetch('/auth/forgot-password', {
+            const res: any = await apiFetch('/auth/forgot-password', {
                 method: 'POST',
                 body: JSON.stringify({ email: values.email }),
             });
             setIsSuccess(true);
+            Toast.show({
+                type: 'success',
+                text1: 'Success',
+                text2: res?.message || res?.data?.message || 'Check your email for instructions.',
+            });
         } catch (error: any) {
             Toast.show({
                 type: 'error',
                 text1: 'Error',
-                text2: error?.message || 'Could not send reset email. Please try again.',
+                text2: error?.data?.message || error?.message || 'Could not send reset email. Please try again.',
             });
         } finally {
             setIsLoading(false);

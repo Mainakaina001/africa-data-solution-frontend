@@ -49,7 +49,7 @@ export default function ChangePassword() {
         }
 
         try {
-            await changePassword({
+            const res = await changePassword({
                 currentPassword: values.currentPassword,
                 newPassword: values.newPassword,
                 user: {
@@ -63,7 +63,7 @@ export default function ChangePassword() {
             Toast.show({
                 type: "success",
                 text1: "Password Changed",
-                text2: "Your password has been updated successfully.",
+                text2: res?.message || res?.data?.message || "Password updated successfully.",
                 visibilityTime: 1800,
                 onHide: () => router.back(),
             });
@@ -71,10 +71,7 @@ export default function ChangePassword() {
             Toast.show({
                 type: "error",
                 text1: "Change Failed",
-                text2:
-                    err?.data?.message ||
-                    err?.message ||
-                    "Could not change password. Please try again.",
+                text2: err?.data?.message || err?.message || "Could not change password.",
             });
         }
     };

@@ -37,7 +37,7 @@ export default function Login() {
                     Toast.show({
                         type: 'success',
                         text1: 'Login Successful',
-                        text2: res?.message || 'Welcome back!',
+                        text2: res?.message || res?.data?.message || 'Welcome back!',
                     });
                     // Navigation is handled by useAuth.ts after token is saved
                     // and Redux isAuthenticated is set to true
@@ -106,7 +106,7 @@ export default function Login() {
                             </TouchableOpacity>
 
                             {error && (
-                                <Text style={styles.errorText}>{error.message}</Text>
+                                <Text style={styles.errorText}>{(error as any)?.data?.message || error.message}</Text>
                             )}
 
                             <Button

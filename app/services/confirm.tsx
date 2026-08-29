@@ -65,8 +65,8 @@ export default function ConfirmScreen() {
     // ─────────────────────────────────────────────────────────────────────────
     const handleConfirm = async (pin: string) => {
         // Client-side PIN format guard (server validates the value)
-        if (!pin || pin.length !== 4 || !/^\d{4}$/.test(pin)) {
-            Toast.show({ type: 'error', text1: 'Invalid PIN', text2: 'Please enter a valid 4-digit PIN.' });
+        if (!pin || pin.length !== 6 || !/^\d{6}$/.test(pin)) {
+            Toast.show({ type: 'error', text1: 'Invalid PIN', text2: 'Please enter a valid 6-digit PIN.' });
             return;
         }
 
@@ -134,9 +134,24 @@ export default function ConfirmScreen() {
             });
         } catch (error: any) {
             setIsProcessing(false);
-            setIsPinVisible(false);
-            const errorMessage = error?.data?.message || error?.message || 'Transaction failed';
-            Toast.show({ type: 'error', text1: 'Error', text2: errorMessage });
+            // Keep the modal open so the user can retry without restarting the flow.
+            // Only close it if it was an auth/session error that requires re-login.
+
+            // RTK Query throws different error shapes:
+            //   Server error  → { status: 400|422|500, data: { message: '...' } }
+            //   Network error → { status: 'FETCH_ERROR', error: 'Network request failed' }
+            //   Parse error   → { status: 'PARSING_ERROR', error: '...', originalStatus: 200 }
+            //   Custom throw  → plain Error object with .message
+            console.error('[Transaction Error]', JSON.stringify(error));
+
+            const errorMessage =
+                error?.data?.message ||
+                error?.data?.error ||
+                error?.error ||
+                error?.message ||
+                'Transaction failed. Please try again.';
+
+            Toast.show({ type: 'error', text1: 'Transaction Failed', text2: errorMessage });
         }
     };
 

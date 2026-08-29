@@ -71,7 +71,7 @@ export default function ChangePin() {
         }
         try {
             if (!user) throw new Error('User session not found. Please log in again.');
-            await changePin({
+            const res = await changePin({
                 currentPin,
                 newPin,
                 user: {
@@ -83,8 +83,8 @@ export default function ChangePin() {
             }).unwrap();
             Toast.show({
                 type: 'success',
-                text1: 'Success',
-                text2: 'Transaction PIN changed successfully!',
+                text1: 'PIN Changed',
+                text2: res?.message || res?.data?.message || 'Transaction PIN changed successfully!',
                 visibilityTime: 1500,
                 onHide: () => router.back(),
             });
@@ -92,7 +92,7 @@ export default function ChangePin() {
             Toast.show({
                 type: 'error',
                 text1: 'Error',
-                text2: err?.data?.message || 'Failed to change PIN. Please try again.',
+                text2: err?.data?.message || err?.message || 'Failed to change PIN.',
             });
             setCurrentPin('');
             setNewPin('');

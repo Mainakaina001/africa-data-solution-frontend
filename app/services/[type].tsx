@@ -379,9 +379,10 @@ export default function ServiceScreen() {
                     type: selectedVariation.variation_code
                 }).unwrap();
                 setMeterVerifiedData(res.data || res);
-                Toast.show({ type: 'success', text1: 'Meter Verified', text2: 'Meter verified successfully!' });
+                const successMsg = res?.message || res?.data?.message || 'Meter verified successfully!';
+                Toast.show({ type: 'success', text1: 'Meter Verified', text2: successMsg });
             } catch (err: any) {
-                const errorMessage = err?.message || err?.data?.message || "Could not verify meter number.";
+                const errorMessage = err?.data?.message || err?.message || 'Could not verify meter number.';
                 Toast.show({ type: 'error', text1: 'Verification Failed', text2: errorMessage });
             }
         } else if (type === 'cable') {
@@ -392,9 +393,10 @@ export default function ServiceScreen() {
                     serviceID: selectedTvProvider.serviceID
                 }).unwrap();
                 setMeterVerifiedData(res.data || res);
-                Toast.show({ type: 'success', text1: 'Smartcard Verified', text2: 'Smartcard verified successfully!' });
+                const successMsg = res?.message || res?.data?.message || 'Smartcard verified successfully!';
+                Toast.show({ type: 'success', text1: 'Smartcard Verified', text2: successMsg });
             } catch (err: any) {
-                const errorMessage = err?.message || err?.data?.message || "Could not verify smartcard number.";
+                const errorMessage = err?.data?.message || err?.message || 'Could not verify smartcard number.';
                 Toast.show({ type: 'error', text1: 'Verification Failed', text2: errorMessage });
             }
         }
@@ -408,9 +410,10 @@ export default function ServiceScreen() {
                 variationCode: selectedVariation.variation_code
             }).unwrap();
             setEduVerifiedData(res.data || res);
-            Toast.show({ type: 'success', text1: 'JAMB Verified', text2: 'JAMB Profile verified successfully!' });
+            const successMsg = res?.message || res?.data?.message || 'JAMB Profile verified successfully!';
+            Toast.show({ type: 'success', text1: 'JAMB Verified', text2: successMsg });
         } catch (err: any) {
-            const errorMessage = err?.message || err?.data?.message || "Could not verify JAMB profile.";
+            const errorMessage = err?.data?.message || err?.message || 'Could not verify JAMB profile.';
             Toast.show({ type: 'error', text1: 'Verification Failed', text2: errorMessage });
         }
     };
