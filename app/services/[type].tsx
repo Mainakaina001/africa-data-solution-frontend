@@ -12,7 +12,6 @@ import {
     useGetElectricityProvidersQuery,
     useGetServiceVariationsQuery,
     useGetTvProvidersQuery,
-    useGetWalletBalanceQuery,
     useVerifyJambProfileMutation,
     useVerifyMeterNumberMutation,
     useVerifySmartcardMutation
@@ -246,6 +245,8 @@ export default function ServiceScreen() {
     const [selectedVariation, setSelectedVariation] = useState<any | null>(null);
     const [meterNumber, setMeterNumber] = useState('');
     const [meterVerifiedData, setMeterVerifiedData] = useState<any | null>(null);
+    // TV subscription type: 'renew' = keep same package, 'change' = new package
+    const [subscriptionType, setSubscriptionType] = useState<'renew' | 'change'>('renew');
 
     const [verifySmartcard, { isLoading: isVerifyingSmartcard }] = useVerifySmartcardMutation();
 
@@ -509,7 +510,7 @@ export default function ServiceScreen() {
                 smartcardNumber: meterNumber,
                 serviceID: selectedTvProvider?.serviceID,
                 variationCode: selectedVariation?.variation_code,
-                subscriptionType: 'change',
+                subscriptionType,
             }));
         } else if (type === 'education') {
             dispatch(setPendingTransaction({
@@ -550,10 +551,10 @@ export default function ServiceScreen() {
                 headerStyle: { backgroundColor: '#fff' },
             }} />
 
-            <KeyboardAvoidingView
+        <KeyboardAvoidingView
                 style={{ flex: 1 }}
-                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 80}
             >
                 <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
                     <WalletBalanceCard balance={walletBalance !== null && walletBalance !== undefined ? String(walletBalance) : ""} />
@@ -712,6 +713,8 @@ export default function ServiceScreen() {
                                         const provider = uniqueTvProviders.find((p: any) => String(p.serviceID) === plan.id);
                                         setSelectedTvProvider(provider);
                                         setAmount('');
+                                        setMeterVerifiedData(null);
+                                        setSelectedVariation(null);
                                     }}
                                 />
                             </View>
@@ -722,7 +725,11 @@ export default function ServiceScreen() {
                                     <Input
                                         placeholder="Enter Smartcard or IUC"
                                         value={meterNumber}
-                                        onChangeText={setMeterNumber}
+                                        onChangeText={(v) => {
+                                            setMeterNumber(v);
+                                            setMeterVerifiedData(null);
+                                            setSelectedVariation(null);
+                                        }}
                                         keyboardType="number-pad"
                                     />
                                     <Button
@@ -735,10 +742,79 @@ export default function ServiceScreen() {
                             )}
 
                             {meterVerifiedData && (
+                                <View style={styles.tvVerifiedCard}>
+                                    <View style={styles.tvVerifiedRow}>
+                                        <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
+                                        <Text style={styles.tvVerifiedName}>
+                                            {meterVerifiedData.customerName ||
+                                             meterVerifiedData.Customer_Name ||
+                                             meterVerifiedData.name || 'Unknown'}
+                                        </Text>
+                                    </View>
+                                    {(meterVerifiedData.status) && (
+                                        <Text style={styles.tvVerifiedMeta}>
+                                            Status: <Text style={[
+                                                styles.tvVerifiedMetaValue,
+                                                { color: meterVerifiedData.status?.toLowerCase() === 'active' ? '#22C55E' : '#EF4444' }
+                                            ]}>{meterVerifiedData.status}</Text>
+                                        </Text>
+                                    )}
+                                    {(meterVerifiedData.dueDate) && (
+                                        <Text style={styles.tvVerifiedMeta}>
+                                            Due Date: <Text style={styles.tvVerifiedMetaValue}>{meterVerifiedData.dueDate}</Text>
+                                        </Text>
+                                    )}
+                                    {(meterVerifiedData.smartcardNumber || meterVerifiedData.Smartcard_Number) && (
+                                        <Text style={styles.tvVerifiedMeta}>
+                                            Card No: <Text style={styles.tvVerifiedMetaValue}>
+                                                {meterVerifiedData.smartcardNumber || meterVerifiedData.Smartcard_Number}
+                                            </Text>
+                                        </Text>
+                                    )}
+                                </View>
+                            )}
+
+                            {meterVerifiedData && (
                                 <View style={styles.section}>
-                                    <Text style={[styles.label, { color: Colors.primary }]}>
-                                        Verified Owner: {meterVerifiedData.Customer_Name || meterVerifiedData.name || meterVerifiedData.customerName || 'Unknown'}
-                                    </Text>
+                                    <Text style={styles.label}>Subscription Type</Text>
+                                    <View style={styles.subTypeRow}>
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.subTypeBtn,
+                                                subscriptionType === 'renew' && styles.subTypeBtnActive,
+                                            ]}
+                                            onPress={() => setSubscriptionType('renew')}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Ionicons
+                                                name="refresh-circle"
+                                                size={18}
+                                                color={subscriptionType === 'renew' ? '#fff' : Colors.textSecondary}
+                                            />
+                                            <Text style={[
+                                                styles.subTypeBtnText,
+                                                subscriptionType === 'renew' && styles.subTypeBtnTextActive,
+                                            ]}>Renew</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.subTypeBtn,
+                                                subscriptionType === 'change' && styles.subTypeBtnActive,
+                                            ]}
+                                            onPress={() => setSubscriptionType('change')}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Ionicons
+                                                name="swap-horizontal"
+                                                size={18}
+                                                color={subscriptionType === 'change' ? '#fff' : Colors.textSecondary}
+                                            />
+                                            <Text style={[
+                                                styles.subTypeBtnText,
+                                                subscriptionType === 'change' && styles.subTypeBtnTextActive,
+                                            ]}>Change Package</Text>
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
                             )}
 
@@ -909,7 +985,7 @@ const styles = StyleSheet.create({
     },
     label: {
         fontSize: 14,
-        color: Colors.textSecondary,
+        color: Colors.textPrimary,
         marginBottom: 8,
         fontWeight: '500',
     },
@@ -941,5 +1017,64 @@ const styles = StyleSheet.create({
     pinHintText: {
         fontSize: 13,
         color: Colors.primary,
+    },
+    // ── TV verified card ─────────────────────────────────────────────────────
+    tvVerifiedCard: {
+        backgroundColor: '#F0FDF4',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#BBF7D0',
+        padding: 14,
+        marginVertical: 10,
+        gap: 6,
+    },
+    tvVerifiedRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 4,
+    },
+    tvVerifiedName: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#166534',
+        flex: 1,
+    },
+    tvVerifiedMeta: {
+        fontSize: 13,
+        color: '#374151',
+    },
+    tvVerifiedMetaValue: {
+        fontWeight: '600',
+        color: '#111827',
+    },
+    // ── Subscription type toggle ─────────────────────────────────────────────
+    subTypeRow: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    subTypeBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 12,
+        borderRadius: 10,
+        borderWidth: 1.5,
+        borderColor: '#D1D5DB',
+        backgroundColor: '#F9FAFB',
+    },
+    subTypeBtnActive: {
+        backgroundColor: Colors.primary,
+        borderColor: Colors.primary,
+    },
+    subTypeBtnText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: Colors.textSecondary,
+    },
+    subTypeBtnTextActive: {
+        color: '#fff',
     },
 });

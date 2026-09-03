@@ -149,19 +149,41 @@ export const apiSlice = createApi({
             }),
         }),
         createPin: builder.mutation<ApiResponse<any>, { pin: string; user: { id: string; email: string; phone: string; role: string } }>({
-            query: ({ pin, user }) => ({
-                url: `/auth/create-pin?id=${encodeURIComponent(user.id)}&email=${encodeURIComponent(user.email)}&phone=${encodeURIComponent(user.phone)}&role=${encodeURIComponent(user.role)}`,
-                method: "POST",
-                body: { pin },
-            }),
+            query: ({ pin, user }) => {
+                const params = new URLSearchParams();
+                params.append('id', user.id);
+                params.append('user.id', user.id);
+                params.append('email', user.email);
+                params.append('user.email', user.email);
+                params.append('phone', user.phone);
+                params.append('user.phone', user.phone);
+                params.append('role', user.role);
+                params.append('user.role', user.role);
+                return {
+                    url: `/auth/create-pin?${params.toString()}`,
+                    method: "POST",
+                    body: { pin },
+                };
+            },
             invalidatesTags: ["User"],
         }),
         changePin: builder.mutation<ApiResponse<any>, { currentPin: string; newPin: string; user: { id: string; email: string; phone: string; role: string } }>({
-            query: ({ user, currentPin, newPin }) => ({
-                url: `/auth/change-pin?id=${encodeURIComponent(user.id)}&email=${encodeURIComponent(user.email)}&phone=${encodeURIComponent(user.phone)}&role=${encodeURIComponent(user.role)}`,
-                method: "POST",
-                body: { currentPin, newPin },
-            }),
+            query: ({ user, currentPin, newPin }) => {
+                const params = new URLSearchParams();
+                params.append('id', user.id);
+                params.append('user.id', user.id);
+                params.append('email', user.email);
+                params.append('user.email', user.email);
+                params.append('phone', user.phone);
+                params.append('user.phone', user.phone);
+                params.append('role', user.role);
+                params.append('user.role', user.role);
+                return {
+                    url: `/auth/change-pin?${params.toString()}`,
+                    method: "POST",
+                    body: { currentPin, newPin },
+                };
+            },
         }),
 
         // Wallet & Virtual Accounts

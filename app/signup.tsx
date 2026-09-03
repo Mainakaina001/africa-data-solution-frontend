@@ -113,6 +113,7 @@ export default function SignupScreen() {
                         text1: 'Registration Successful! 🎉',
                         text2: res?.message || res?.data?.message || 'Your account has been created. Please log in.',
                     });
+                    router.replace('/login');
                 },
                 onError: (err: any) => {
                     Toast.show({

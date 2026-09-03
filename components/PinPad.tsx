@@ -25,7 +25,7 @@ const KEYPAD = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'];
 export function PinPad({
     visible,
     title = 'Enter PIN',
-    subtitle = 'Enter your 4-digit transaction PIN',
+    subtitle = 'Enter your 6-digit transaction PIN',
     onComplete,
     onCancel,
     isLoading = false,
@@ -33,9 +33,9 @@ export function PinPad({
 }: PinPadProps) {
     const [pin, setPin] = useState('');
 
-    // Auto-submit when 4 digits entered
+    // Auto-submit when 6 digits entered
     useEffect(() => {
-        if (pin.length === 4) {
+        if (pin.length === 6) {
             onComplete(pin);
         }
     }, [pin]);
@@ -49,7 +49,7 @@ export function PinPad({
         if (isLoading) return;
         if (key === 'del') {
             setPin((p) => p.slice(0, -1));
-        } else if (key !== '' && pin.length < 4) {
+        } else if (key !== '' && pin.length < 6) {
             setPin((p) => p + key);
         }
     };
@@ -76,7 +76,7 @@ export function PinPad({
 
                     {/* Dots */}
                     <View style={styles.dotsRow}>
-                        {[0, 1, 2, 3].map((i) => (
+                        {[0, 1, 2, 3, 4, 5].map((i) => (
                             <View
                                 key={i}
                                 style={[

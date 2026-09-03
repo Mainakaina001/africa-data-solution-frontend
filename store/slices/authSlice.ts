@@ -41,8 +41,21 @@ const authSlice = createSlice({
             // token intentionally NOT stored in state
             state.isAuthenticated = true;
         },
+        // Stores a newly-registered user so create-pin can access their
+        // id/email/phone without being fully authenticated yet.
+        setPendingUser: (state, action: PayloadAction<User>) => {
+            state.user = action.payload;
+            state.isAuthenticated = false; // NOT authenticated until they log in
+        },
         updateUser: (state, action: PayloadAction<User>) => {
             state.user = action.payload;
+        },
+        setHasPin: (state, action: PayloadAction<boolean>) => {
+            if (state.user) {
+                state.user.hasPin = action.payload;
+                state.user.hasTransactionPin = action.payload;
+                state.user.isPinSet = action.payload;
+            }
         },
         logout: (state) => {
             state.user = null;
@@ -51,5 +64,5 @@ const authSlice = createSlice({
     },
 });
 
-export const { setCredentials, updateUser, logout } = authSlice.actions;
+export const { setCredentials, setPendingUser, updateUser, setHasPin, logout } = authSlice.actions;
 export default authSlice.reducer;

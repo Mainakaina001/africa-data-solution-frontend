@@ -15,7 +15,9 @@ import {
     useRegisterMutation
 } from "@/store/api/apiSlice";
 import { useAppDispatch } from "@/store/hooks";
-import { logout, setCredentials, updateUser } from "@/store/slices/authSlice";
+import { logout, setCredentials, setPendingUser, updateUser } from "@/store/slices/authSlice";
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // ─── Register ───────
 
@@ -25,14 +27,25 @@ export function useRegister() {
 
     useEffect(() => {
         if (data?.success && data.data) {
-            // Registration successful — send user to login
+            // Flag that this user needs to create a transaction PIN upon login
+            const email = data.data.user?.email;
+            if (email) {
+                AsyncStorage.setItem(`needs_pin_${email.toLowerCase()}`, "true").catch(() => {});
+            }
+            if (data.data.user?.id) {
+                AsyncStorage.setItem(`needs_pin_${data.data.user.id}`, "true").catch(() => {});
+            }
+            // Registration complete — route user to login
             router.replace("/login");
         }
-    }, [data]);
-
+    }, [data, dispatch]);
 
     const mutate = async (values: any, options?: any) => {
         try {
+            // Also store flag proactively with submitted email
+            if (values?.email) {
+                AsyncStorage.setItem(`needs_pin_${values.email.toLowerCase()}`, "true").catch(() => {});
+            }
             const result = await trigger(values).unwrap();
             options?.onSuccess?.(result);
         } catch (err) {
@@ -47,7 +60,7 @@ export function useRegister() {
     };
 }
 
-// ─── Login ────────────────────────────────────────────────────────────────────
+// ─── Login han──────
 
 export function useLogin() {
     const dispatch = useAppDispatch();

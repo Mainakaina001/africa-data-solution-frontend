@@ -1,8 +1,10 @@
 import { Button } from '@/components/ui/button';
 import { Colors } from '@/constants/colors';
 import { useCreatePinMutation } from '@/store/api/apiSlice';
-import { useAppSelector } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { setHasPin } from '@/store/slices/authSlice';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -15,6 +17,7 @@ export default function CreatePin() {
     const [pin, setPin] = useState('');
     const [confirmPin, setConfirmPin] = useState('');
     const [createPin, { isLoading }] = useCreatePinMutation();
+    const dispatch = useAppDispatch();
     const user = useAppSelector((state) => state.auth.user);
 
     const currentPin = step === 'create' ? pin : confirmPin;
@@ -63,12 +66,26 @@ export default function CreatePin() {
                     role: user.role ?? 'USER',
                 },
             }).unwrap(); // VULN-020: parameter, not state
+
+            // Mark PIN as created in local storage
+            await AsyncStorage.setItem(`has_pin_${user.id}`, 'true');
+            if (user.email) {
+                await AsyncStorage.setItem(`has_pin_${user.email.toLowerCase()}`, 'true');
+                await AsyncStorage.removeItem(`needs_pin_${user.email.toLowerCase()}`);
+            }
+            await AsyncStorage.removeItem(`needs_pin_${user.id}`);
+
+            // Update Redux state
+            dispatch(setHasPin(true));
+
             Toast.show({
                 type: 'success',
                 text1: 'PIN Created',
                 text2: res?.message || res?.data?.message || 'Transaction PIN created successfully!',
                 visibilityTime: 1500,
-                onHide: () => router.back(),
+                onHide: () => {
+                    router.back();
+                },
             });
         } catch (err: any) {
             Toast.show({

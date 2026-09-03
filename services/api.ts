@@ -48,6 +48,9 @@ export interface User {
     isVerified?: boolean;
     twoFactorEnabled?: boolean;
     wallet?: Wallet;
+    hasPin?: boolean;
+    hasTransactionPin?: boolean;
+    isPinSet?: boolean;
     // /auth/me returns a single virtualAccount object
     virtualAccount?: VirtualAccount;
     // kept for backward-compat if any endpoint still returns an array
@@ -414,7 +417,8 @@ export const getWalletBalance = (user?: { id: string; email: string; phone: stri
 export interface PurchaseDataRequest {
     dataPlanId: string;
     phone: string;
-    transactionPin: string; // VULN-003: PIN validated server-side before processing
+    pin?: string;
+    transactionPin?: string; // Backward compatibility
 }
 
 export const getLiveDataPlans = (): Promise<ApiResponse<NetworkPlans[]>> =>
@@ -475,7 +479,8 @@ export interface PurchaseAirtimeRequest {
     network: string;
     amount: number;
     phone: string;
-    transactionPin: string; // VULN-003: PIN validated server-side before processing
+    pin?: string;
+    transactionPin?: string;
 }
 
 export interface AirtimeNetwork {
@@ -583,7 +588,8 @@ export interface PayElectricityRequest {
     variationCode: string;
     amount: number;
     phone: string;
-    transactionPin: string; // VULN-003: PIN validated server-side before processing
+    pin?: string;
+    transactionPin?: string;
 }
 
 // Actual API shape: /bills/tv/providers returns { id, name } — no serviceID field
@@ -597,9 +603,15 @@ export interface VerifySmartcardRequest {
     serviceID: string;
 }
 
+// Actual API shape: /bills/tv/verify → { data: { customerName, status, dueDate, smartcardNumber } }
 export interface VerifySmartcardResponse {
-    Customer_Name: string;
-    Smartcard_Number: string;
+    customerName: string;
+    status: string;
+    dueDate: string;
+    smartcardNumber: string;
+    // Legacy/fallback keys from vtpass (may still appear)
+    Customer_Name?: string;
+    Smartcard_Number?: string;
     [key: string]: any;
 }
 
@@ -609,8 +621,9 @@ export interface PayTvRequest {
     variationCode: string;
     amount: number;
     phone: string;
-    subscriptionType: string; // e.g., 'change'
-    transactionPin: string; // VULN-003: PIN validated server-side before processing
+    subscriptionType: 'renew' | 'change'; // 'renew' = same package, 'change' = new package
+    pin?: string;
+    transactionPin?: string;
 }
 
 // Actual API shape mirrors electricity/tv: { data: { providers: [{id, name}] } }
@@ -636,7 +649,8 @@ export interface PayEducationRequest {
     phone: string;
     quantity: number;
     profileId?: string; // For JAMB
-    transactionPin: string; // VULN-003: PIN validated server-side before processing
+    pin?: string;
+    transactionPin?: string;
 }
 
 export const getBillProviders = (category: string): Promise<ApiResponse<BillProvider[]>> => {

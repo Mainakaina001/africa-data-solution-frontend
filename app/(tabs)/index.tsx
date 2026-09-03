@@ -1,9 +1,11 @@
+import { CreatePinModal } from '@/components/CreatePinModal';
 import { Colors } from '@/constants/colors';
 import { useWalletBalance } from '@/hooks/useWallet';
 import { useGetMeQuery } from '@/store/api/apiSlice';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { updateUser } from '@/store/slices/authSlice';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import * as ScreenCapture from 'expo-screen-capture';
@@ -16,12 +18,12 @@ const SERVICES = [
   { icon: 'tv-outline', label: 'Cable TV', type: 'cable' },
   { icon: 'flash-outline', label: 'Electricity', type: 'electricity' },
   { icon: 'school-outline', label: 'Edu Pins', type: 'education' },
-  { icon: 'chatbubble-outline', label: 'Bulk SMS', type: 'bulk-sms' },
-  { icon: 'key-outline', label: 'Recharge Pin', type: 'recharge-pin' },
-  { icon: 'repeat-outline', label: 'Airtime Swap', type: 'airtime-swap' },
-  { icon: 'gift-outline', label: 'Smile', type: 'smile' },
-  { icon: 'briefcase-outline', label: 'NIN', type: 'NIN' },
-  { icon: 'shield-checkmark-outline', label: 'BVN', type: 'BVN' }
+  // { icon: 'chatbubble-outline', label: 'Bulk SMS', type: 'bulk-sms' },
+  // { icon: 'key-outline', label: 'Recharge Pin', type: 'recharge-pin' },
+  // { icon: 'repeat-outline', label: 'Airtime Swap', type: 'airtime-swap' },
+  // { icon: 'gift-outline', label: 'Smile', type: 'smile' },
+  // { icon: 'briefcase-outline', label: 'NIN', type: 'NIN' },
+  // { icon: 'shield-checkmark-outline', label: 'BVN', type: 'BVN' }
 ]
 
 export default function Dashboard() {
@@ -35,6 +37,9 @@ export default function Dashboard() {
   );
 
   const [balanceVisible, setBalanceVisible] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [needsPin, setNeedsPin] = useState(false);
+
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
   const {
@@ -48,6 +53,45 @@ export default function Dashboard() {
       dispatch(updateUser(meData.data));
     }
   }, [meData, dispatch]);
+
+  useEffect(() => {
+    const checkPinStatus = async () => {
+      const activeUser = meData?.data ?? user;
+      if (!activeUser?.id) return;
+
+      // If backend explicitly says PIN is set
+      if (activeUser.hasPin === true || activeUser.hasTransactionPin === true || activeUser.isPinSet === true) {
+        setNeedsPin(false);
+        setShowPinModal(false);
+        return;
+      }
+
+      // Check if previously marked as created in local storage
+      const hasPinLocal = await AsyncStorage.getItem(`has_pin_${activeUser.id}`);
+      if (hasPinLocal === 'true') {
+        setNeedsPin(false);
+        setShowPinModal(false);
+        return;
+      }
+
+      // Check if user has explicit false or local flag from registration
+      const needsPinLocal =
+        (await AsyncStorage.getItem(`needs_pin_${activeUser.id}`)) === 'true' ||
+        (activeUser.email ? (await AsyncStorage.getItem(`needs_pin_${activeUser.email.toLowerCase()}`)) === 'true' : false);
+
+      if (
+        activeUser.hasPin === false ||
+        activeUser.hasTransactionPin === false ||
+        activeUser.isPinSet === false ||
+        needsPinLocal
+      ) {
+        setNeedsPin(true);
+        setShowPinModal(true);
+      }
+    };
+
+    checkPinStatus();
+  }, [user?.id, user?.hasPin, user?.hasTransactionPin, user?.isPinSet, meData]);
 
   const {
     balance,
@@ -137,6 +181,31 @@ export default function Dashboard() {
         </View>
       </LinearGradient>
 
+      {/* Transaction PIN Warning Banner */}
+      {needsPin && (
+        <TouchableOpacity
+          style={styles.pinWarningBanner}
+          activeOpacity={0.85}
+          onPress={() => setShowPinModal(true)}
+        >
+          <View style={styles.pinWarningLeft}>
+            <View style={styles.pinWarningIconWrap}>
+              <Ionicons name="shield-checkmark" size={20} color="#B45309" />
+            </View>
+            <View style={styles.pinWarningTextWrap}>
+              <Text style={styles.pinWarningTitle}>Transaction PIN Required</Text>
+              <Text style={styles.pinWarningSubtitle}>
+                Create your 6-digit transaction PIN before continuing. Tap to set up.
+              </Text>
+            </View>
+          </View>
+          <View style={styles.pinWarningActionBtn}>
+            <Text style={styles.pinWarningActionText}>Set PIN</Text>
+            <Ionicons name="chevron-forward" size={14} color="#FFFFFF" />
+          </View>
+        </TouchableOpacity>
+      )}
+
       {/* Virtual Account Notice */}
       <TouchableOpacity style={styles.notice} onPress={() => router.push('/virtualAccount')}>
         <Text style={styles.noticeText}>
@@ -172,16 +241,27 @@ export default function Dashboard() {
       </View>
 
       {/* Recent Transactions */}
-      <View style={styles.recentHeader}>
+      {/* <View style={styles.recentHeader}>
         <Text style={styles.sectionTitle}>Recent Transactions</Text>
         <TouchableOpacity onPress={() => router.push('/(tabs)/walletHistory')}>
           <Text style={styles.seeAll}>See all</Text>
         </TouchableOpacity>
-      </View>
-      <View style={styles.emptyState}>
+      </View> */}
+      {/* <View style={styles.emptyState}>
         <Ionicons name="receipt-outline" size={40} color="#aaa" />
         <Text style={styles.emptyText}>No transactions yet</Text>
-      </View>
+      </View> */}
+
+      <CreatePinModal
+        visible={showPinModal}
+        isDismissable={true}
+        onClose={() => setShowPinModal(false)}
+        onSuccess={() => {
+          setNeedsPin(false);
+          setShowPinModal(false);
+          refetchMe();
+        }}
+      />
     </ScrollView>
   );
 }
@@ -380,5 +460,66 @@ const styles = StyleSheet.create({
   emptyText: {
     color: Colors.textSecondary,
     fontSize: 14,
+  },
+  pinWarningBanner: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 4,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+    shadowColor: '#D97706',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  pinWarningLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  pinWarningIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FDE68A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pinWarningTextWrap: {
+    flex: 1,
+  },
+  pinWarningTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#92400E',
+    marginBottom: 2,
+  },
+  pinWarningSubtitle: {
+    fontSize: 11,
+    color: '#B45309',
+    lineHeight: 15,
+  },
+  pinWarningActionBtn: {
+    backgroundColor: '#D97706',
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  pinWarningActionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });

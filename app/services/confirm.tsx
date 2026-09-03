@@ -10,7 +10,7 @@
  *   thing in the URL is an opaque `id` string.
  * ─────────────────────────────────────────────────────────────────────────────
  */
-import { TransactionPinModal } from '@/components/TransactionPinModal';
+import { PinPad } from '@/components/PinPad';
 import { Colors } from '@/constants/colors';
 import {
     usePayEducationBillMutation,
@@ -23,7 +23,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { clearPendingTransaction } from '@/store/slices/pendingTransactionSlice';
 import { Ionicons } from '@expo/vector-icons';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 
@@ -36,6 +36,7 @@ export default function ConfirmScreen() {
 
     const [isPinVisible, setIsPinVisible] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const isCompletedRef = useRef(false);
 
     const [purchaseAirtime] = usePurchaseAirtimeMutation();
     const [purchaseData] = usePurchaseDataMutation();
@@ -46,6 +47,7 @@ export default function ConfirmScreen() {
     // Guard: if no pending transaction in Redux (e.g. direct deep link attempt),
     // send the user back immediately — nothing to confirm
     useEffect(() => {
+        if (isCompletedRef.current) return;
         if (!pending || pending.id !== id) {
             Toast.show({
                 type: 'error',
@@ -81,13 +83,15 @@ export default function ConfirmScreen() {
                     network: pending.network!,
                     amount: pending.amount!,
                     phone: pending.phone!,
-                    transactionPin: pin, // VULN-003: PIN sent to server
+                    pin,
+                    transactionPin: pin,
                 }).unwrap();
             } else if (type === 'data') {
                 response = await purchaseData({
                     dataPlanId: pending.dataPlanId!,
                     phone: pending.phone!,
-                    transactionPin: pin, // VULN-003: PIN sent to server
+                    pin,
+                    transactionPin: pin,
                 }).unwrap();
             } else if (type === 'electricity') {
                 response = await payElectricity({
@@ -96,7 +100,8 @@ export default function ConfirmScreen() {
                     variationCode: pending.variationCode!,
                     amount: pending.amount!,
                     phone: pending.phone!,
-                    transactionPin: pin, // VULN-003: PIN sent to server
+                    pin,
+                    transactionPin: pin,
                 }).unwrap();
             } else if (type === 'cable') {
                 response = await payTv({
@@ -106,7 +111,8 @@ export default function ConfirmScreen() {
                     amount: pending.amount!,
                     phone: pending.phone!,
                     subscriptionType: pending.subscriptionType || 'change',
-                    transactionPin: pin, // VULN-003: PIN sent to server
+                    pin,
+                    transactionPin: pin,
                 }).unwrap();
             } else if (type === 'education') {
                 response = await payEducation({
@@ -116,12 +122,12 @@ export default function ConfirmScreen() {
                     phone: pending.phone!,
                     quantity: pending.quantity ?? 1,
                     profileId: pending.profileId,
-                    transactionPin: pin, // VULN-003: PIN sent to server
+                    pin,
+                    transactionPin: pin,
                 }).unwrap();
             }
 
-            // Clear the pending transaction from Redux on success
-            dispatch(clearPendingTransaction());
+            isCompletedRef.current = true;
             setIsProcessing(false);
             setIsPinVisible(false);
 
@@ -130,7 +136,10 @@ export default function ConfirmScreen() {
                 text1: 'Success',
                 text2: response?.message || response?.data?.message || 'Transaction successful!',
                 visibilityTime: 1500,
-                onHide: () => router.replace('/(tabs)'),
+                onHide: () => {
+                    dispatch(clearPendingTransaction());
+                    router.replace('/(tabs)');
+                },
             });
         } catch (error: any) {
             setIsProcessing(false);
@@ -191,10 +200,12 @@ export default function ConfirmScreen() {
                 </View>
             </TouchableOpacity>
 
-            <TransactionPinModal
-                isVisible={isPinVisible}
-                onClose={() => setIsPinVisible(false)}
-                onConfirm={handleConfirm}
+            <PinPad
+                visible={isPinVisible}
+                title="Enter Transaction PIN"
+                subtitle="Enter your 6-digit PIN to authorise this transaction"
+                onComplete={handleConfirm}
+                onCancel={() => setIsPinVisible(false)}
                 isLoading={isProcessing}
             />
         </View>
