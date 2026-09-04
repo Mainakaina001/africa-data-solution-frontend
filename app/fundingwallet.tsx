@@ -17,10 +17,8 @@ import {
     View,
 } from "react-native";
 import Toast from "react-native-toast-message";
-import { usePreventScreenCapture } from "expo-screen-capture";
 
 export default function FundingWallet() {
-    usePreventScreenCapture();
     const [showMonnifyModal, setShowMonnifyModal] = useState(false);
     const [amount, setAmount] = useState("");
 

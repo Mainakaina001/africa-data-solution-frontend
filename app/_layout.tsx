@@ -1,5 +1,6 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
+import * as ScreenCapture from 'expo-screen-capture';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 
@@ -27,6 +28,11 @@ function RootLayoutNav() {
 
   useEffect(() => {
     (async () => {
+      try {
+        await ScreenCapture.allowScreenCaptureAsync();
+      } catch {
+        // Ignore if unsupported
+      }
       const isCompromised = await checkDeviceIntegrity();
       if (isCompromised) {
         handleCompromisedDevice();

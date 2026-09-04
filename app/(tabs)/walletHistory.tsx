@@ -4,9 +4,8 @@ import { Transaction } from '@/services/api';
 import { useGetTransactionsQuery } from '@/store/api/apiSlice';
 import { useAppSelector } from '@/store/hooks';
 import { Ionicons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
-import * as ScreenCapture from 'expo-screen-capture';
-import React, { useCallback, useState } from 'react';
+import { router } from 'expo-router';
+import React, { useState } from 'react';
 import {
     FlatList,
     StyleSheet,
@@ -70,15 +69,6 @@ function TransactionCard({ tx, onPress }: { tx: Transaction; onPress: () => void
 }
 
 export default function WalletHistory() {
-    useFocusEffect(
-        useCallback(() => {
-            ScreenCapture.preventScreenCaptureAsync();
-            return () => {
-                ScreenCapture.allowScreenCaptureAsync();
-            };
-        }, [])
-    );
-
     const user = useAppSelector((state) => state.auth.user);
     const [typeFilter, setTypeFilter] = useState<FilterType>('ALL');
     const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL');

@@ -7,8 +7,7 @@ import { updateUser } from '@/store/slices/authSlice';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useFocusEffect } from 'expo-router';
-import * as ScreenCapture from 'expo-screen-capture';
+import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -27,15 +26,6 @@ const SERVICES = [
 ]
 
 export default function Dashboard() {
-  useFocusEffect(
-    useCallback(() => {
-      ScreenCapture.preventScreenCaptureAsync();
-      return () => {
-        ScreenCapture.allowScreenCaptureAsync();
-      };
-    }, [])
-  );
-
   const [balanceVisible, setBalanceVisible] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [needsPin, setNeedsPin] = useState(false);
@@ -207,9 +197,9 @@ export default function Dashboard() {
       )}
 
       {/* Virtual Account Notice */}
-      <TouchableOpacity style={styles.notice} onPress={() => router.push('/virtualAccount')}>
+      <TouchableOpacity style={styles.notice}>
         <Text style={styles.noticeText}>
-          Click here to Create/Update your virtual account as required by CBN
+          Copy this Account number below to Fund your wallet
         </Text>
       </TouchableOpacity>
 

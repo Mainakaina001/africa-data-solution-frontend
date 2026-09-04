@@ -81,11 +81,11 @@ export default function Security() {
                     icon="shield-outline"
                     title="Reset Pin"
                     subtitle="reset your pin with password" /> */}
-                <SettingItem
+                {/* <SettingItem
                     onPress={() => router.push('/create-pin')}
                     icon="lock-closed-outline"
                     title="Add pin"
-                    subtitle="Add your 6-digit transaction PIN" />
+                    subtitle="Add your 6-digit transaction PIN" /> */}
 
                 {/* <SettingSwitch
                     icon="finger-print"
