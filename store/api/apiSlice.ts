@@ -26,6 +26,11 @@ import {
     PurchaseAirtimeRequest,
     PurchaseDataRequest,
     RegisterRequest,
+    RegisterTokenRequest,
+    RegisterTokenResponse,
+    RemoveTokenResponse,
+    TestNotificationRequest,
+    TestNotificationResponse,
     Transaction,
     TransactionsResponse,
     User,
@@ -492,6 +497,28 @@ export const apiSlice = createApi({
             }),
             invalidatesTags: ["Wallet"],
         }),
+
+        // ─── Notifications ───────────────────────────────────────────────
+        registerNotificationToken: builder.mutation<ApiResponse<RegisterTokenResponse>, RegisterTokenRequest>({
+            query: (data) => ({
+                url: "/notifications/register-token",
+                method: "POST",
+                body: data,
+            }),
+        }),
+        removeNotificationToken: builder.mutation<ApiResponse<RemoveTokenResponse>, void>({
+            query: () => ({
+                url: "/notifications/token",
+                method: "DELETE",
+            }),
+        }),
+        testNotification: builder.mutation<ApiResponse<TestNotificationResponse>, TestNotificationRequest>({
+            query: (data) => ({
+                url: "/notifications/test",
+                method: "POST",
+                body: data,
+            }),
+        }),
     }),
 });
 
@@ -535,4 +562,7 @@ export const {
     usePayEducationBillMutation,
     useGetBillsHistoryQuery,
     useGetBillByReferenceQuery,
+    useRegisterNotificationTokenMutation,
+    useRemoveNotificationTokenMutation,
+    useTestNotificationMutation,
 } = apiSlice;

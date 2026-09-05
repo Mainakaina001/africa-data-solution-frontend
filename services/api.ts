@@ -670,3 +670,44 @@ export const payBill = (data: PayBillRequest): Promise<ApiResponse<any>> =>
         method: "POST",
         body: JSON.stringify(data),
     });
+
+// ─── Notifications ───
+
+export interface RegisterTokenRequest {
+    fcmToken: string;
+}
+
+export interface RegisterTokenResponse {
+    registered: boolean;
+}
+
+export interface RemoveTokenResponse {
+    removed: boolean;
+}
+
+export interface TestNotificationRequest {
+    title: string;
+    body: string;
+}
+
+export interface TestNotificationResponse {
+    sent: boolean;
+}
+
+export const registerNotificationToken = (data: RegisterTokenRequest): Promise<ApiResponse<RegisterTokenResponse>> =>
+    apiFetch<ApiResponse<RegisterTokenResponse>>("/notifications/register-token", {
+        method: "POST",
+        body: JSON.stringify(data),
+    });
+
+export const removeNotificationToken = (): Promise<ApiResponse<RemoveTokenResponse>> =>
+    apiFetch<ApiResponse<RemoveTokenResponse>>("/notifications/token", {
+        method: "DELETE",
+    });
+
+export const testNotification = (data: TestNotificationRequest): Promise<ApiResponse<TestNotificationResponse>> =>
+    apiFetch<ApiResponse<TestNotificationResponse>>("/notifications/test", {
+        method: "POST",
+        body: JSON.stringify(data),
+    });
+

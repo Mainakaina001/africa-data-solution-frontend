@@ -22,7 +22,6 @@ export default function RootLayout() {
     </Provider>
   );
 }
-
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
 
@@ -66,6 +65,7 @@ function RootLayoutNav() {
         <Stack.Screen name='security' options={{ headerShown: false }} />
         <Stack.Screen name='notify' options={{ headerShown: false }} />
         <Stack.Screen name='transactionDetail' options={{ headerShown: false }} />
+        <Stack.Screen name='support' options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
       <Toast />

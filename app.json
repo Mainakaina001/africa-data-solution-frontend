@@ -47,6 +47,15 @@
       ],
       "expo-secure-store",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/datalog.png",
+          "color": "#0066CC",
+          "defaultChannel": "default",
+          "sounds": []
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {

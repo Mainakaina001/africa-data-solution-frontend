@@ -10,6 +10,10 @@ import {
     saveToken,
 } from "@/services/api";
 import {
+    registerDeviceToken,
+    unregisterDeviceToken,
+} from "@/services/notificationService";
+import {
     useGetMeQuery,
     useLoginMutation,
     useRegisterMutation
@@ -81,6 +85,8 @@ export function useLogin() {
                 if (refreshToken) {
                     await saveRefreshToken(refreshToken);
                 }
+                // Register device for push notifications (non-blocking)
+                registerDeviceToken().catch(() => {});
             }
 
             options?.onSuccess?.(result);
@@ -131,6 +137,8 @@ export function useLogout() {
     return async () => {
         try {
             const refreshToken = await getRefreshToken();
+            // Deregister push notification token before server logout
+            await unregisterDeviceToken();
             // Attempt server-side token invalidation
             await apiFetch('/auth/logout', {
                 method: 'POST',

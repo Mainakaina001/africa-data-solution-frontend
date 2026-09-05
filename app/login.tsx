@@ -2,10 +2,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Colors } from "@/constants/colors";
 import { useLogin } from "@/hooks/useAuth";
+import {
+    authenticateWithBiometrics,
+    getBiometricCredentials,
+    getBiometricEnabled,
+    hasBiometricHardware,
+    isBiometricsSupported,
+    saveBiometricCredentials,
+    setBiometricEnabled,
+} from "@/utils/security";
+import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { Formik } from "formik";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
+    Alert,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -28,19 +39,88 @@ const LoginSchema = Yup.object().shape({
 
 export default function Login() {
     const { mutate: login, isPending, error } = useLogin();
+    const [hasBiometrics, setHasBiometrics] = useState(false);
+    const [canBiometricLogin, setCanBiometricLogin] = useState(false);
+    const [biometricEmail, setBiometricEmail] = useState("");
+
+    const checkBiometrics = async () => {
+        const hasHw = await hasBiometricHardware();
+        // Show fingerprint option if hardware exists, or by default on mobile platforms
+        setHasBiometrics(hasHw || Platform.OS !== 'web');
+
+        const supported = await isBiometricsSupported();
+        const enabled = await getBiometricEnabled();
+        const creds = await getBiometricCredentials();
+
+        if (supported && enabled && creds?.email && creds?.password) {
+            setCanBiometricLogin(true);
+            setBiometricEmail(creds.email);
+        } else {
+            setCanBiometricLogin(false);
+            setBiometricEmail(creds?.email || "");
+        }
+    };
+
+    useEffect(() => {
+        checkBiometrics();
+    }, []);
 
     const handleLogin = (values: { email: string; password: string }) => {
         login(
             { email: values.email, password: values.password },
             {
-                onSuccess: (res: any) => {
+                onSuccess: async (res: any) => {
                     Toast.show({
                         type: 'success',
                         text1: 'Login Successful',
                         text2: res?.message || res?.data?.message || 'Welcome back!',
                     });
-                    // Navigation is handled by useAuth.ts after token is saved
-                    // and Redux isAuthenticated is set to true
+
+                    // Check if device supports biometrics
+                    const supported = await isBiometricsSupported();
+                    const enabled = await getBiometricEnabled();
+
+                    if (supported) {
+                        if (enabled) {
+                            // Update stored credentials securely
+                            await saveBiometricCredentials({
+                                email: values.email,
+                                password: values.password,
+                            });
+                        } else {
+                            // Prompt user to enable biometric login for faster subsequent logins
+                            Alert.alert(
+                                'Enable Fingerprint Login?',
+                                'Would you like to use your fingerprint to log in next time without typing your password?',
+                                [
+                                    {
+                                        text: 'Not Now',
+                                        style: 'cancel',
+                                    },
+                                    {
+                                        text: 'Enable',
+                                        onPress: async () => {
+                                            const success = await authenticateWithBiometrics('Confirm fingerprint to enable');
+                                            if (success) {
+                                                await setBiometricEnabled(true);
+                                                await saveBiometricCredentials({
+                                                    email: values.email,
+                                                    password: values.password,
+                                                });
+                                                setCanBiometricLogin(true);
+                                                setBiometricEmail(values.email);
+                                                Toast.show({
+                                                    type: 'success',
+                                                    text1: 'Fingerprint Enabled',
+                                                    text2: 'You can now log in using your fingerprint.',
+                                                });
+                                            }
+                                        },
+                                    },
+                                ]
+                            );
+                        }
+                    }
                 },
                 onError: (err: any) => {
                     Toast.show({
@@ -51,6 +131,35 @@ export default function Login() {
                 },
             }
         );
+    };
+
+    const handleBiometricLogin = async () => {
+        const supported = await isBiometricsSupported();
+        if (!supported) {
+            Toast.show({
+                type: 'info',
+                text1: 'Biometrics Not Enrolled',
+                text2: 'Please set up fingerprint or Face ID in your device settings first.',
+            });
+            return;
+        }
+
+        const enabled = await getBiometricEnabled();
+        const creds = await getBiometricCredentials();
+
+        if (!enabled || !creds?.email || !creds?.password) {
+            Toast.show({
+                type: 'info',
+                text1: 'First-time Setup Required',
+                text2: 'Please log in with your email & password once to enable fingerprint login.',
+            });
+            return;
+        }
+
+        const success = await authenticateWithBiometrics('Log in with your fingerprint');
+        if (success) {
+            handleLogin({ email: creds.email, password: creds.password });
+        }
     };
 
     return (
@@ -72,7 +181,8 @@ export default function Login() {
                 </View>
 
                 <Formik
-                    initialValues={{ email: "", password: "" }}
+                    initialValues={{ email: biometricEmail || "", password: "" }}
+                    enableReinitialize
                     validationSchema={LoginSchema}
                     onSubmit={handleLogin}
                 >
@@ -114,6 +224,24 @@ export default function Login() {
                                 onPress={handleSubmit}
                                 isDisabled={isPending}
                             />
+
+                            {hasBiometrics && (
+                                <TouchableOpacity
+                                    style={styles.biometricBtn}
+                                    onPress={handleBiometricLogin}
+                                    disabled={isPending}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={styles.biometricIconWrap}>
+                                        <Ionicons name="finger-print" size={24} color={Colors.primary} />
+                                    </View>
+                                    <Text style={styles.biometricText}>
+                                        {canBiometricLogin && biometricEmail
+                                            ? `Log in as ${biometricEmail}`
+                                            : "Log in with Fingerprint"}
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     )}
                 </Formik>
@@ -124,13 +252,6 @@ export default function Login() {
                         <Text style={styles.signupLink}>Sign Up</Text>
                     </TouchableOpacity>
                 </View>
-
-                {/* <TouchableOpacity
-                    style={styles.contactButton}
-                    onPress={() => console.log("Contact Us pressed")}
-                >
-                    <Text style={styles.contactText}>Contact Us</Text>
-                </TouchableOpacity> */}
             </ScrollView>
         </KeyboardAvoidingView>
     );
@@ -203,13 +324,30 @@ const styles = StyleSheet.create({
         color: Colors.accent,
         fontWeight: "600",
     },
-    // contactButton: {
-    //     marginTop: 16,
-    //     alignItems: "center",
-    //     padding: 12,
-    // },
-    // contactText: {
-    //     fontSize: 14,
-    //     color: Colors.textSecondary,
-    // },
+    biometricBtn: {
+        marginTop: 18,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+        borderRadius: 14,
+        backgroundColor: "#FFFFFF",
+        borderWidth: 1.5,
+        borderColor: Colors.primary,
+        gap: 10,
+    },
+    biometricIconWrap: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: `${Colors.primary}15`,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    biometricText: {
+        fontSize: 15,
+        fontWeight: "600",
+        color: Colors.primary,
+    },
 });

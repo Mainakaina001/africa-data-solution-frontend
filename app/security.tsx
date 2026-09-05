@@ -1,3 +1,4 @@
+import SettingSwitch from "@/components/ui/switch";
 import { Colors } from "@/constants/colors";
 import {
     authenticateWithBiometrics,
@@ -13,7 +14,6 @@ import Toast from 'react-native-toast-message';
 
 export default function Security() {
     const [biometric, setBiometric] = useState(false);
-    const [walletBalance, setWalletBalance] = useState(false);
 
     useEffect(() => {
         (async () => {
@@ -41,7 +41,7 @@ export default function Security() {
                 Toast.show({
                     type: 'success',
                     text1: 'Biometrics Enabled',
-                    text2: 'You can now use biometrics to authenticate.',
+                    text2: 'You can now use your fingerprint to log in and approve transactions.',
                 });
             } else {
                 setBiometric(false);
@@ -60,46 +60,32 @@ export default function Security() {
         <ScrollView style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()}>
-
                     <Ionicons name="chevron-back" size={24} color={Colors.primary} />
                 </TouchableOpacity>
                 <Text style={styles.headerText}>Security</Text>
             </View>
-            <View>
+            <View style={styles.content}>
                 <SettingItem
                     onPress={() => router.push('/change-password')}
                     icon="keypad-outline"
                     title="Change Password"
-                    subtitle="change your account password" />
+                    subtitle="Change your account password" />
                 <SettingItem
                     onPress={() => router.push('/change-pin')}
                     icon="shield-outline"
                     title="Change Pin"
-                    subtitle="change your pin" />
-                {/* <SettingItem
-                    // onPress={()}
-                    icon="shield-outline"
-                    title="Reset Pin"
-                    subtitle="reset your pin with password" /> */}
-                {/* <SettingItem
-                    onPress={() => router.push('/create-pin')}
-                    icon="lock-closed-outline"
-                    title="Add pin"
-                    subtitle="Add your 6-digit transaction PIN" /> */}
+                    subtitle="Change your 6-digit transaction PIN" />
 
-                {/* <SettingSwitch
+                <SettingSwitch
                     icon="finger-print"
-                    title={"Biometric"}
+                    title="Fingerprint / Biometric"
+                    subtitle="Log in and authorize transactions with fingerprint"
                     value={biometric}
                     onValueChange={handleBiometricToggle}
-                /> */}
-                {/* <SettingSwitch icon="wallet"
-                    title="Show Wallet Balance"
-                    value={walletBalance}
-                    onValueChange={setWalletBalance} /> */}
+                />
             </View>
         </ScrollView>
-    )
+    );
 }
 
 
@@ -122,8 +108,11 @@ function SettingItem({ icon, title, subtitle, onPress }: any) {
 const styles = StyleSheet.create({
     container: {
         backgroundColor: Colors.background,
-        paddingTop: 30
-
+        flex: 1,
+        paddingTop: 30,
+    },
+    content: {
+        paddingHorizontal: 16,
     },
     header: {
         flexDirection: "row",

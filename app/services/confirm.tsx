@@ -110,7 +110,7 @@ export default function ConfirmScreen() {
                     variationCode: pending.variationCode!,
                     amount: pending.amount!,
                     phone: pending.phone!,
-                    subscriptionType: pending.subscriptionType || 'change',
+                    subscriptionType: (pending.subscriptionType || 'change') as 'renew' | 'change',
                     pin,
                     transactionPin: pin,
                 }).unwrap();

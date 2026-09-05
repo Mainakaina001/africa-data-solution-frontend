@@ -26,6 +26,17 @@ export async function checkDeviceIntegrity(): Promise<boolean> {
 }
 
 /**
+ * Checks if biometric hardware is present on the device.
+ */
+export async function hasBiometricHardware(): Promise<boolean> {
+    try {
+        return await LocalAuthentication.hasHardwareAsync();
+    } catch {
+        return false;
+    }
+}
+
+/**
  * Checks if biometric hardware is present and has enrolled fingerprints or FaceID.
  */
 export async function isBiometricsSupported(): Promise<boolean> {
@@ -64,12 +75,100 @@ export async function authenticateWithBiometrics(
     }
 }
 
+const BIOMETRIC_CREDENTIALS_KEY = 'biometric_saved_credentials';
+const BIOMETRIC_PIN_KEY = 'biometric_saved_pin';
+
+export interface BiometricCredentials {
+    email: string;
+    password?: string;
+}
+
+/**
+ * Saves login credentials for biometric login.
+ */
+export async function saveBiometricCredentials(credentials: BiometricCredentials): Promise<void> {
+    try {
+        await SecureStore.setItemAsync(
+            BIOMETRIC_CREDENTIALS_KEY,
+            JSON.stringify(credentials),
+            { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY }
+        );
+    } catch {
+        // Silently fail if secure store unavailable
+    }
+}
+
+/**
+ * Retrieves saved biometric login credentials.
+ */
+export async function getBiometricCredentials(): Promise<BiometricCredentials | null> {
+    try {
+        const raw = await SecureStore.getItemAsync(BIOMETRIC_CREDENTIALS_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw) as BiometricCredentials;
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Clears saved biometric login credentials.
+ */
+export async function clearBiometricCredentials(): Promise<void> {
+    try {
+        await SecureStore.deleteItemAsync(BIOMETRIC_CREDENTIALS_KEY);
+    } catch {
+        // Ignore delete errors
+    }
+}
+
+/**
+ * Saves transaction PIN for biometric transaction approval.
+ */
+export async function saveBiometricPin(pin: string): Promise<void> {
+    try {
+        await SecureStore.setItemAsync(BIOMETRIC_PIN_KEY, pin, {
+            keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+        });
+    } catch {
+        // Ignore
+    }
+}
+
+/**
+ * Retrieves saved transaction PIN for biometric transaction approval.
+ */
+export async function getBiometricPin(): Promise<string | null> {
+    try {
+        return await SecureStore.getItemAsync(BIOMETRIC_PIN_KEY);
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Clears saved biometric PIN.
+ */
+export async function clearBiometricPin(): Promise<void> {
+    try {
+        await SecureStore.deleteItemAsync(BIOMETRIC_PIN_KEY);
+    } catch {
+        // Ignore
+    }
+}
+
 /**
  * Persists the user's preference for biometric authentication.
  */
 export async function setBiometricEnabled(enabled: boolean): Promise<void> {
     try {
-        await SecureStore.setItemAsync(BIOMETRIC_KEY, enabled ? 'true' : 'false');
+        await SecureStore.setItemAsync(BIOMETRIC_KEY, enabled ? 'true' : 'false', {
+            keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+        });
+        if (!enabled) {
+            await clearBiometricCredentials();
+            await clearBiometricPin();
+        }
     } catch {
         // Silently fail if secure store is unavailable
     }

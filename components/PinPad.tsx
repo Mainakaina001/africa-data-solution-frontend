@@ -1,4 +1,11 @@
 import { Colors } from '@/constants/colors';
+import {
+    authenticateWithBiometrics,
+    getBiometricEnabled,
+    getBiometricPin,
+    isBiometricsSupported,
+    saveBiometricPin,
+} from '@/utils/security';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
@@ -8,6 +15,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { CustomLoader } from './ui/CustomLoader';
 
 interface PinPadProps {
@@ -20,7 +28,7 @@ interface PinPadProps {
     error?: string | null;
 }
 
-const KEYPAD = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'];
+const KEYPAD = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'bio', '0', 'del'];
 
 export function PinPad({
     visible,
@@ -32,23 +40,58 @@ export function PinPad({
     error = null,
 }: PinPadProps) {
     const [pin, setPin] = useState('');
+    const [hasBiometrics, setHasBiometrics] = useState(false);
 
     // Auto-submit when 6 digits entered
     useEffect(() => {
         if (pin.length === 6) {
+            // If biometrics are enabled on device, cache PIN securely for future 1-tap fingerprint approval
+            (async () => {
+                const enabled = await getBiometricEnabled();
+                if (enabled) {
+                    await saveBiometricPin(pin);
+                }
+            })();
             onComplete(pin);
         }
     }, [pin]);
 
-    // Reset pin when modal opens
+    // Check biometric support when modal opens
     useEffect(() => {
-        if (visible) setPin('');
+        if (visible) {
+            setPin('');
+            (async () => {
+                const supported = await isBiometricsSupported();
+                const enabled = await getBiometricEnabled();
+                setHasBiometrics(supported && enabled);
+            })();
+        }
     }, [visible]);
+
+    const handleBiometricAuth = async () => {
+        if (isLoading) return;
+        const savedPin = await getBiometricPin();
+        if (!savedPin) {
+            Toast.show({
+                type: 'info',
+                text1: 'Enter PIN Once',
+                text2: 'Enter your 6-digit PIN manually once to activate fingerprint approval.',
+            });
+            return;
+        }
+
+        const success = await authenticateWithBiometrics('Approve transaction with fingerprint');
+        if (success) {
+            onComplete(savedPin);
+        }
+    };
 
     const handleKey = (key: string) => {
         if (isLoading) return;
         if (key === 'del') {
             setPin((p) => p.slice(0, -1));
+        } else if (key === 'bio') {
+            handleBiometricAuth();
         } else if (key !== '' && pin.length < 6) {
             setPin((p) => p + key);
         }
@@ -102,25 +145,36 @@ export function PinPad({
                         </View>
                     ) : (
                         <View style={styles.keypad}>
-                            {KEYPAD.map((key, idx) => (
-                                <TouchableOpacity
-                                    key={idx}
-                                    style={[
-                                        styles.key,
-                                        key === '' && styles.keyEmpty,
-                                        key === 'del' && styles.keyDel,
-                                    ]}
-                                    onPress={() => handleKey(key)}
-                                    disabled={key === ''}
-                                    activeOpacity={key === '' ? 1 : 0.6}
-                                >
-                                    {key === 'del' ? (
-                                        <Ionicons name="backspace-outline" size={24} color={Colors.textPrimary} />
-                                    ) : (
-                                        <Text style={styles.keyText}>{key}</Text>
-                                    )}
-                                </TouchableOpacity>
-                            ))}
+                            {KEYPAD.map((key, idx) => {
+                                const isBio = key === 'bio';
+                                const isDel = key === 'del';
+                                const isEmpty = isBio && !hasBiometrics;
+
+                                return (
+                                    <TouchableOpacity
+                                        key={idx}
+                                        style={[
+                                            styles.key,
+                                            isEmpty && styles.keyEmpty,
+                                            isDel && styles.keyDel,
+                                            isBio && hasBiometrics && styles.keyBio,
+                                        ]}
+                                        onPress={() => handleKey(key)}
+                                        disabled={isEmpty}
+                                        activeOpacity={isEmpty ? 1 : 0.6}
+                                    >
+                                        {isDel ? (
+                                            <Ionicons name="backspace-outline" size={24} color={Colors.textPrimary} />
+                                        ) : isBio ? (
+                                            hasBiometrics ? (
+                                                <Ionicons name="finger-print" size={28} color={Colors.primary} />
+                                            ) : null
+                                        ) : (
+                                            <Text style={styles.keyText}>{key}</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
                         </View>
                     )}
                 </View>
@@ -234,6 +288,9 @@ const styles = StyleSheet.create({
     },
     keyDel: {
         backgroundColor: '#F2F2F7',
+    },
+    keyBio: {
+        backgroundColor: `${Colors.primary}12`,
     },
     keyText: {
         fontSize: 24,
