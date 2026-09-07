@@ -5,7 +5,7 @@ import { Image, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } 
 import Toast from "react-native-toast-message";
 
 const SUPPORT_CHANNELS = {
-    whatsappGroup: "https://whatsapp.com/ILRp0GBQraT1URbRSJT5vu",
+    whatsappChannel: "https://whatsapp.com/channel/0029Vb9Swhb7IUYV1usgxp3V",
     whatsappChat: "https://wa.me/2348160604894",
     email: "mailto:africadatasupport@gmail.com",
     website: "https://www.africadatasolutions.org/",
