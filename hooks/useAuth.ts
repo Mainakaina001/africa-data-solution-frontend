@@ -85,8 +85,8 @@ export function useLogin() {
                 if (refreshToken) {
                     await saveRefreshToken(refreshToken);
                 }
-                // Register device for push notifications (non-blocking)
-                registerDeviceToken().catch(() => {});
+                // Register device for push notifications (non-blocking, idempotent)
+                registerDeviceToken(accessToken).catch(() => {});
             }
 
             options?.onSuccess?.(result);

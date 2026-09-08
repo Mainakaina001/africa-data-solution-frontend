@@ -61,7 +61,7 @@ export default function Support() {
                     {/* WhatsApp Group */}
                     <TouchableOpacity
                         style={styles.supportCard}
-                        onPress={() => handleOpenUrl(SUPPORT_CHANNELS.whatsappGroup, "WhatsApp Group")}
+                        onPress={() => handleOpenUrl(SUPPORT_CHANNELS.whatsappChannel, "WhatsApp Group")}
                         activeOpacity={0.7}
                     >
                         <View style={[styles.iconCircle, { backgroundColor: "#E8F5E9" }]}>

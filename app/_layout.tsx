@@ -12,6 +12,7 @@ import { useEffect } from 'react';
 import { store } from '../store';
 
 import { checkDeviceIntegrity, handleCompromisedDevice } from '@/utils/security';
+import { setupNotificationChannels, initPushTokenRotationListener } from '@/services/notificationService';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -39,7 +40,17 @@ function RootLayoutNav() {
       }
       await SplashScreen.hideAsync();
     })();
-  }, [])
+  }, []);
+
+  useEffect(() => {
+    setupNotificationChannels().catch((err) => {
+      console.warn("[Notifications] Failed to initialize notification channels:", err);
+    });
+    const cleanupRotation = initPushTokenRotationListener();
+    return () => {
+      cleanupRotation();
+    };
+  }, []);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>

@@ -13,7 +13,10 @@
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": false
-        }
+        },
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -51,7 +54,7 @@
         {
           "icon": "./assets/images/datalog.png",
           "color": "#0066CC",
-          "defaultChannel": "default",
+          "defaultChannel": "africa_data_solutions",
           "sounds": []
         }
       ],

@@ -1,3 +1,4 @@
+import { registerDeviceToken } from '@/services/notificationService';
 import { CreatePinModal } from '@/components/CreatePinModal';
 import { Colors } from '@/constants/colors';
 import { useWalletBalance } from '@/hooks/useWallet';
@@ -37,6 +38,11 @@ export default function Dashboard() {
     refetch: refetchMe,
     isFetching: isFetchingMe,
   } = useGetMeQuery();
+
+  useEffect(() => {
+    // Ensure FCM token is registered on app start/dashboard mount (idempotent)
+    registerDeviceToken().catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (meData?.success && meData.data) {
