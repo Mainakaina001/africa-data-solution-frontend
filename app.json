@@ -28,7 +28,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.ghabasjr.AfricaDatasolutions"
+      "package": "com.ghabasjr.AfricaDatasolutions",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",

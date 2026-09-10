@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1040752709991",
+    "project_id": "africa-data-solution",
+    "storage_bucket": "africa-data-solution.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1040752709991:android:c7ed9d0c9312d678495fc2",
+        "android_client_info": {
+          "package_name": "com.ghabasjr.AfricaDatasolutions"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBS_xe6DNlAqbcLHwELRDypU6VTzD--UvY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
