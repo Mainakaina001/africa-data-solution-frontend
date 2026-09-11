@@ -6,7 +6,7 @@ import {
 } from "@/store/api/apiSlice";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
     ActivityIndicator,
     ScrollView,
@@ -104,7 +104,7 @@ export default function Notify() {
                 )}
             </View>
 
-            <View style={styles.section}>
+            {/* <View style={styles.section}>
                 <Text style={styles.sectionLabel}>DEVELOPER</Text>
                 <TouchableOpacity
                     style={[styles.testBtn, testLoading && styles.testBtnDisabled]}
@@ -121,7 +121,7 @@ export default function Notify() {
                         {testLoading ? "Sending…" : "Send Test Notification"}
                     </Text>
                 </TouchableOpacity>
-            </View>
+            </View> */}
         </ScrollView>
     );
 }

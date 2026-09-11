@@ -8,8 +8,8 @@ import React, { useState } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { CustomLoader } from "@/components/ui/CustomLoader";
 import * as Yup from "yup";
-import { apiFetch } from "@/services/api"; // VULN-006
-import Toast from "react-native-toast-message";  // VULN-006
+import { apiFetch } from "@/services/api";
+import Toast from "react-native-toast-message";
 
 
 // Validation Schema
@@ -21,10 +21,9 @@ const ForgotPasswordSchema = Yup.object().shape({
 
 export default function ForgotPassword() {
     const [isLoading, setIsLoading] = useState(false);
-    const [isSuccess, setIsSuccess] = useState(false);
+    const [sentEmail, setSentEmail] = useState("");
 
-    // VULN-006 FIX: Real API call — no longer a stub.
-    // VULN-010 FIX: No console.log of user email.
+    // Send OTP to email, then navigate to OTP verification screen.
     const handleForgotPassword = async (values: { email: string }) => {
         setIsLoading(true);
         try {
@@ -32,11 +31,16 @@ export default function ForgotPassword() {
                 method: 'POST',
                 body: JSON.stringify({ email: values.email }),
             });
-            setIsSuccess(true);
+            setSentEmail(values.email);
             Toast.show({
                 type: 'success',
-                text1: 'Success',
-                text2: res?.message || res?.data?.message || 'Check your email for instructions.',
+                text1: 'Code Sent',
+                text2: res?.message || res?.data?.message || 'A verification code has been sent to your email.',
+            });
+            // Navigate to OTP screen with email param
+            router.push({
+                pathname: '/otp-verify',
+                params: { email: values.email },
             });
         } catch (error: any) {
             Toast.show({
@@ -65,73 +69,51 @@ export default function ForgotPassword() {
                 </View>
                 <Text style={styles.title}>Forgot Password?</Text>
                 <Text style={styles.subtitle}>
-                {isSuccess
-                        ? "Check your email for a password reset code"
-                        : "Don't worry! Enter your email address and we'll send you a code to reset your password"
-                    }
+                    Don't worry! Enter your email address and we'll send you a 6-digit code to reset your password.
                 </Text>
             </View>
 
-            {!isSuccess ? (
-                <Formik
-                    initialValues={{ email: "" }}
-                    validationSchema={ForgotPasswordSchema}
-                    onSubmit={handleForgotPassword}
-                >
-                    {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
-                        <View>
-                            <View style={styles.inputContainer}>
-                                <Input
-                                    placeholder="Email address"
-                                    value={values.email}
-                                    onChangeText={handleChange("email")}
-                                    onBlur={handleBlur("email")}
-                                    error={errors.email}
-                                    touched={touched.email}
-                                    autoCapitalize="none"
-                                    keyboardType="email-address"
-                                />
-                            </View>
-
-                            <Button
-                                title={isLoading ? "Sending..." : "Send Reset Link"}
-                                onPress={handleSubmit}
-                                isDisabled={isLoading}
+            <Formik
+                initialValues={{ email: "" }}
+                validationSchema={ForgotPasswordSchema}
+                onSubmit={handleForgotPassword}
+            >
+                {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
+                    <View>
+                        <View style={styles.inputContainer}>
+                            <Input
+                                placeholder="Email address"
+                                value={values.email}
+                                onChangeText={handleChange("email")}
+                                onBlur={handleBlur("email")}
+                                error={errors.email}
+                                touched={touched.email}
+                                autoCapitalize="none"
+                                keyboardType="email-address"
                             />
-
-                            {isLoading && (
-                                <View style={styles.loadingContainer}>
-                                    <CustomLoader size="small" color={Colors.tint} />
-                                </View>
-                            )}
                         </View>
-                    )}
-                </Formik>
-            ) : (
-                <View style={styles.successContainer}>
-                    <View style={styles.successIconContainer}>
-                        <Ionicons name="checkmark-circle" size={80} color="#4CAF50" />
-                    </View>
-                    <Text style={styles.successTitle}>Email Sent!</Text>
-                    <Text style={styles.successMessage}>
-                        We've sent a password reset code to your email address.
-                        Please check your inbox and follow the instructions.
-                    </Text>
-                    <Button
-                        title="Back to Login"
-                        onPress={() => router.replace("/login")}
-                    />
-                </View>
-            )}
 
-            {!isSuccess && (
-                <View style={styles.loginContainer}>
-                    <Text style={styles.loginText}>Remember your password? </Text>
-                    <TouchableOpacity onPress={() => router.back()}>
-                        <Text style={styles.loginLink}>Back to Login</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
+                        <Button
+                            title={isLoading ? "Sending..." : "Send Verification Code"}
+                            onPress={handleSubmit}
+                            isDisabled={isLoading}
+                        />
+
+                        {isLoading && (
+                            <View style={styles.loadingContainer}>
+                                <CustomLoader size="small" color={Colors.tint} />
+                            </View>
+                        )}
+                    </View>
+                )}
+            </Formik>
+
+            <View style={styles.loginContainer}>
+                <Text style={styles.loginText}>Remember your password? </Text>
+                <TouchableOpacity onPress={() => router.back()}>
+                    <Text style={styles.loginLink}>Back to Login</Text>
+                </TouchableOpacity>
+            </View>
         </ScrollView>
     );
 }
@@ -201,24 +183,5 @@ const styles = StyleSheet.create({
         color: Colors.accent,
         fontWeight: '600',
     },
-    successContainer: {
-        alignItems: 'center',
-    },
-    successIconContainer: {
-        marginBottom: 24,
-    },
-    successTitle: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: Colors.textPrimary,
-        marginBottom: 12,
-    },
-    successMessage: {
-        fontSize: 16,
-        color: Colors.textSecondary,
-        textAlign: 'center',
-        lineHeight: 24,
-        marginBottom: 32,
-        paddingHorizontal: 16,
-    },
+
 });

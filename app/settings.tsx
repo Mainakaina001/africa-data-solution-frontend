@@ -25,11 +25,11 @@ export default function Settings() {
                     icon="notifications-outline"
                     title="Notification"
                     subtitle="Push notification and Email notification" />
-                <SettingItem
+                {/* <SettingItem
                     onPress={() => router.push('/(tabs)/account')}
                     icon="trash"
                     title="Deactivate/Delete Account"
-                    subtitle="Account Deletion" />
+                    subtitle="Account Deletion" /> */}
             </View>
 
         </ScrollView>

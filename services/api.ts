@@ -383,6 +383,37 @@ export const changePassword = (data: ChangePasswordRequest): Promise<ApiResponse
         body: JSON.stringify(data),
     });
 
+// ─── Password Reset (Forgot Password flow) ───────────────────────────────────
+// Backend endpoints (from Swagger):
+//   POST /auth/forgot-password  → { email }  — sends OTP to email
+//   POST /auth/reset-password   → { email, resetToken, newPassword }
+//                                  where resetToken IS the OTP code the user receives
+
+export interface ForgotPasswordRequest {
+    email: string;
+}
+
+export interface ResetPasswordRequest {
+    email: string;
+    /** The OTP code sent to the user's email — used directly as the reset token */
+    resetToken: string;
+    newPassword: string;
+}
+
+/** POST /auth/forgot-password — triggers OTP email */
+export const forgotPassword = (data: ForgotPasswordRequest): Promise<ApiResponse<any>> =>
+    apiFetch<ApiResponse<any>>("/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify(data),
+    });
+
+/** POST /auth/reset-password — validates OTP (as resetToken) and sets the new password */
+export const resetPassword = (data: ResetPasswordRequest): Promise<ApiResponse<any>> =>
+    apiFetch<ApiResponse<any>>("/auth/reset-password", {
+        method: "POST",
+        body: JSON.stringify(data),
+    });
+
 // VIRTUAL ACCOUNT & WALLET
 
 export const getVirtualAccounts = (): Promise<ApiResponse<VirtualAccount[]>> =>
