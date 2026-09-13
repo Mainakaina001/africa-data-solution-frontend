@@ -7,10 +7,12 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { updateUser } from '@/store/slices/authSlice';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Toast from 'react-native-toast-message';
 
 const SERVICES = [
   { icon: 'wifi-outline', label: 'Data', type: 'data' },
@@ -24,12 +26,13 @@ const SERVICES = [
   // { icon: 'gift-outline', label: 'Smile', type: 'smile' },
   // { icon: 'briefcase-outline', label: 'NIN', type: 'NIN' },
   // { icon: 'shield-checkmark-outline', label: 'BVN', type: 'BVN' }
-]
+];
 
 export default function Dashboard() {
   const [balanceVisible, setBalanceVisible] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [needsPin, setNeedsPin] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
@@ -110,6 +113,36 @@ export default function Dashboard() {
 
   // Virtual account from /auth/me
   const virtualAccount = meUser?.virtualAccount ?? meUser?.virtualAccounts?.[0];
+
+  const copyToClipboard = async (text?: string, type: string = 'Account number') => {
+    if (!text || text === '—' || text === '0000000000') {
+      Toast.show({
+        type: 'info',
+        text1: 'Not Available',
+        text2: 'No account number available to copy yet.',
+        position: 'top',
+      });
+      return;
+    }
+    try {
+      await Clipboard.setStringAsync(text);
+      setCopiedField(type);
+      setTimeout(() => setCopiedField(null), 2000);
+      Toast.show({
+        type: 'success',
+        text1: 'Copied!',
+        text2: 'Account number copied to clipboard.',
+        position: 'top',
+      });
+    } catch {
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Failed to copy to clipboard.',
+        position: 'top',
+      });
+    }
+  };
 
   return (
     <ScrollView
@@ -203,7 +236,11 @@ export default function Dashboard() {
       )}
 
       {/* Virtual Account Notice */}
-      <TouchableOpacity style={styles.notice}>
+      <TouchableOpacity
+        style={styles.notice}
+        activeOpacity={0.8}
+        onPress={() => copyToClipboard(virtualAccount?.accountNumber, 'Account number')}
+      >
         <Text style={styles.noticeText}>
           Copy this Account number below to Fund your wallet
         </Text>
@@ -214,9 +251,26 @@ export default function Dashboard() {
         <Text style={styles.bankName}>{virtualAccount?.bankName ?? '—'}</Text>
         <Text style={styles.accountName}>{virtualAccount?.accountName ?? '—'}</Text>
         <View style={styles.accountRow}>
-          <Text style={styles.accountNumber}>{virtualAccount?.accountNumber ?? '0000000000'}</Text>
-          <TouchableOpacity>
-            <Ionicons name="copy-outline" size={18} color={Colors.textPrimary} />
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => copyToClipboard(virtualAccount?.accountNumber, 'Account number')}
+          >
+            <Text style={styles.accountNumber}>{virtualAccount?.accountNumber ?? '0000000000'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => copyToClipboard(virtualAccount?.accountNumber, 'Account number')}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            style={styles.copyBtn}
+          >
+            <Ionicons
+              name={copiedField === 'Account number' ? 'checkmark-circle' : 'copy-outline'}
+              size={18}
+              color={copiedField === 'Account number' ? '#4ADE80' : Colors.textPrimary}
+            />
+            {copiedField === 'Account number' && (
+              <Text style={styles.copiedBadgeText}>Copied</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -399,6 +453,17 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     fontSize: 18,
     fontWeight: '700'
+  },
+  copyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    padding: 4,
+  },
+  copiedBadgeText: {
+    color: '#4ADE80',
+    fontSize: 12,
+    fontWeight: '600',
   },
   services: {
     flexDirection: 'row',

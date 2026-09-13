@@ -77,6 +77,8 @@ function RootLayoutNav() {
         <Stack.Screen name='notify' options={{ headerShown: false }} />
         <Stack.Screen name='transactionDetail' options={{ headerShown: false }} />
         <Stack.Screen name='support' options={{ headerShown: false }} />
+        <Stack.Screen name='otp-verify' options={{ headerShown: false }} />
+        <Stack.Screen name='reset-password' options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
       <Toast />

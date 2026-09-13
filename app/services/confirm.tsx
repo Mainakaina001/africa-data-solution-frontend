@@ -169,7 +169,11 @@ export default function ConfirmScreen() {
             <Stack.Screen options={{
                 headerTitle: 'Confirm',
                 headerLeft: () => (
-                    <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 16 }}>
+                    <TouchableOpacity
+                        onPress={() => router.back()}
+                        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                        style={{ marginLeft: 4, marginRight: 16, padding: 4 }}
+                    >
                         <Ionicons name="arrow-back" size={24} color="black" />
                     </TouchableOpacity>
                 ),
